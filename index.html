@@ -528,9 +528,9 @@ body:not(.v293-admin-role) #adminSystemManagement{display:none!important}
 .headerCloudControl.dirty .headerCloudLabel{background:rgba(249,115,22,.15);color:#fed7aa}
 .headerCloudControl.offline{border-color:rgba(148,163,184,.28)}
 .headerCloudControl.error{border-color:rgba(239,68,68,.50)}
-#headerCloudPushBtn{height:34px;padding:0 12px;border:1px solid rgba(249,115,22,.48);border-radius:9px;background:linear-gradient(135deg,#f97316,#c2410c);color:#fff;font-size:11px;font-weight:950;letter-spacing:.03em;cursor:pointer;white-space:nowrap}
-#headerCloudPushBtn:hover{filter:brightness(1.08)}
-#headerCloudPushBtn:disabled{opacity:.55;cursor:wait;filter:none}
+#headerCloudPushBtn,#headerCloudPullBtn{height:34px;padding:0 12px;border-radius:9px;color:#fff;font-size:11px;font-weight:950;letter-spacing:.03em;cursor:pointer;white-space:nowrap}#headerCloudPushBtn{border:1px solid rgba(249,115,22,.48);background:linear-gradient(135deg,#f97316,#c2410c)}#headerCloudPullBtn{border:1px solid rgba(56,189,248,.48);background:linear-gradient(135deg,#38bdf8,#0369a1)}
+#headerCloudPushBtn:hover,#headerCloudPullBtn:hover{filter:brightness(1.08)}
+#headerCloudPushBtn:disabled,#headerCloudPullBtn:disabled{opacity:.55;cursor:wait;filter:none}
 body:not(.v323-cloud-admin) #headerCloudPushBtn{display:none}
 .headerCloudControl:not(:has(#headerCloudPushBtn:not([style*="display: none"]))){}
 @media(max-width:1050px){.headerRightControls{flex-wrap:wrap}.headerCloudControl{min-width:220px}}
@@ -1163,6 +1163,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="globalSplitControl" id="globalSplitControl"><div><label>Split</label><select id="globalSplitSelect" onchange="IntegratedApp.changeGlobalSplit(this.value)"></select></div></div>
 <div class="headerCloudControl" id="headerCloudControl">
 <div class="headerCloudMeta"><span class="headerCloudLabel">Cloud</span><b id="headerCloudState">確認中</b><small id="headerCloudUpdated">最終更新：—</small></div>
+<button id="headerCloudPullBtn" onclick="HeaderCloudPublish.refresh()" type="button">最新データ取得</button>
 <button id="headerCloudPushBtn" onclick="HeaderCloudPublish.publish()" type="button">クラウド更新</button>
 </div>
 </div>
@@ -1569,6 +1570,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 (function(){
 'use strict';
 const TABLE='apex_nexus_cloud_data';
+const FIXED_CONFIG=Object.freeze({url:'https://mmlkgwucvcpmtziwikfk.supabase.co',key:'sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC',workspace:'apex-team-01',mode:'cloud'});
 const CFG={url:'apexCloudSupabaseUrl',key:'apexCloudSupabaseAnonKey',workspace:'apexCloudWorkspaceId',mode:'apexCloudMode'};
 const META='apexCloudV330::';
 const EXCLUDED_PREFIXES=['apexCloud','apex_login_test_v2_','apexSimpleLogin','apexSecureLogin','apexCurrentRole','apexPermissionRole'];
@@ -1576,7 +1578,7 @@ const EXCLUDED_KEYS=new Set(Object.values(CFG));
 let client=null,loader=null,internal=false,busy=false,lastError='',state='idle';
 const $=id=>document.getElementById(id);
 const now=()=>new Date().toISOString();
-function config(){return{url:String(localStorage.getItem(CFG.url)||'').trim().replace(/\/+$/,''),key:String(localStorage.getItem(CFG.key)||'').trim(),workspace:String(localStorage.getItem(CFG.workspace)||'').trim(),mode:String(localStorage.getItem(CFG.mode)||'local')}}
+function config(){return FIXED_CONFIG}
 function metaKey(name){return META+config().workspace+'::'+name}
 function getMeta(name){return localStorage.getItem(metaKey(name))||''}
 function setMeta(name,value){internal=true;try{value?localStorage.setItem(metaKey(name),String(value)):localStorage.removeItem(metaKey(name))}finally{internal=false}emit()}
@@ -1597,18 +1599,18 @@ function markDirty(){if(internal||config().mode!=='cloud')return;setMeta('dirty'
 function clearDirty(remoteAt){setMeta('dirty','');setMeta('lastRemoteAt',remoteAt||'');setMeta('lastSyncAt',now())}
 function currentRole(){try{const u=JSON.parse(localStorage.getItem('apexSecureLoginUserV290')||'null');if(u?.role)return String(u.role).toLowerCase()}catch(_){}return String(localStorage.getItem('apexCurrentRoleV174')||localStorage.getItem('apexCurrentRoleV171')||'').toLowerCase()}
 function renderMini(){const layer=$('cloudSyncLayer');if(!layer)return;let box=$('cloudV166Mini');if(!box){box=document.createElement('div');box.id='cloudV166Mini';box.className='cloudV166Mini';layer.querySelector('.cloudActions')?.insertAdjacentElement('afterend',box)}const c=config();box.innerHTML='<b>ログイン時取得・管理者手動更新</b><br>保存先：'+(c.url&&c.key?'Supabase＋localStorage':'localStorageのみ')+' / 同期対象 '+syncKeys().length+'項目<br><span id="v321SyncStatus">'+(getMeta('dirty')==='1'?'未公開の変更があります':'待機中')+'</span><br><span class="warn">ログイン情報・接続キー・共有IDはクラウドデータへ含めません。</span>'}
-function saveConfig(){const old=config(),url=String($('cloudSupabaseUrl')?.value||old.url).trim().replace(/\/+$/,''),key=String($('cloudSupabaseAnon')?.value||old.key).trim(),workspace=String($('cloudWorkspaceId')?.value||old.workspace).trim();if(!workspace){setState('error','共有IDを入力してください。','共有IDを入力してください。');return false}internal=true;try{localStorage.setItem(CFG.url,url);localStorage.setItem(CFG.key,key);localStorage.setItem(CFG.workspace,workspace);localStorage.setItem(CFG.mode,url&&key?'cloud':'local')}finally{internal=false}client=null;setState(url&&key?'idle':'offline',url&&key?'設定を保存しました。':'設定を保存しました。Supabase未設定のためローカルのみです。');renderMini();return true}
+function saveConfig(){internal=true;try{localStorage.setItem(CFG.url,FIXED_CONFIG.url);localStorage.setItem(CFG.key,FIXED_CONFIG.key);localStorage.setItem(CFG.workspace,FIXED_CONFIG.workspace);localStorage.setItem(CFG.mode,'cloud')}finally{internal=false}client=null;setState('idle','公開用クラウド設定を使用しています。');renderMini();return true}
 async function test(){try{if(!saveConfig())return false;await fetchRemote();setState('ready','接続OKです。共有ID: '+config().workspace);return true}catch(e){setState('error','接続失敗: '+(e.message||e),e.message||String(e));return false}}
 async function push(){if(busy)return false;if(currentRole()!=='admin'){setState('error','クラウド更新は管理者のみ実行できます。','管理者権限が必要です');return false}const c=config();if(!c.url||!c.key||!c.workspace){setState('error','Project URL・Publishable key・共有IDを確認してください。','クラウド設定不足');return false}busy=true;setState('syncing','クラウドを確認しています…');try{const payload=collect(),remote=await fetchRemote(),base=getMeta('lastRemoteAt');if(remote&&String(remote.updated_at||'')!==String(base||'')){backup('local-before-overwrite',payload);backup('remote-before-overwrite',remote.data);const msg=base?'他のブラウザでクラウドデータが更新されています。\n\n現在のローカルデータで上書きしますか？':'クラウドに既存データがあります。\n\n現在のローカルデータで上書きしますか？';if(!confirm(msg)){setState('needs-review','更新を中止しました。「読み込み」でクラウド最新版を取得できます。');return false}}const writtenAt=await writeRemote(payload);clearDirty(writtenAt);setState('ready','クラウド更新完了: '+new Date().toLocaleString());return true}catch(e){setState('error','クラウド更新失敗: '+(e.message||e),e.message||String(e));return false}finally{busy=false;renderMini()}}
 async function pull({automatic=false,confirmOverwrite=true}={}){if(busy)return false;busy=true;setState('syncing',automatic?'ログイン時にクラウドを確認しています…':'クラウドから読み込んでいます…');try{const remote=await fetchRemote();if(!remote){setState('ready','クラウドにデータがありません。管理者がクラウド更新を押してください。');return false}const local=collect(),different=stable(local)!==stable(remote.data),dirty=getMeta('dirty')==='1';if(automatic&&dirty&&different){backup('login-local-unsynced',local);setState('dirty','ローカルに未公開の変更があるため、ログイン時の自動読込を行いませんでした。');return false}if(different&&confirmOverwrite&&!confirm('クラウドデータを読み込みますか？\n現在のローカルデータは安全退避してから置き換えます。')){setState(dirty?'dirty':'idle','読み込みを中止しました。');return false}if(different){backup('before-pull',local);apply(remote.data)}clearDirty(remote.updated_at);setState('ready',automatic?'ログイン時にクラウド最新版を取得しました。':'クラウドから読み込み完了しました。');if(different){try{window.dispatchEvent(new CustomEvent('apex:data-applied'))}catch(_){}try{window.HomeApp?.render?.();window.ScrimSavedList?.render?.();window.ZoneOverviewApp?.render?.()}catch(_){}}return true}catch(e){setState('error',(automatic?'ログイン時の読込失敗: ':'読み込み失敗: ')+(e.message||e),e.message||String(e));return false}finally{busy=false;renderMini()}}
-function open(){const c=config();if($('cloudSupabaseUrl'))$('cloudSupabaseUrl').value=c.url;if($('cloudSupabaseAnon'))$('cloudSupabaseAnon').value=c.key;if($('cloudWorkspaceId'))$('cloudWorkspaceId').value=c.workspace;if($('cloudMode'))$('cloudMode').value=c.url&&c.key?'cloud':c.mode;$('cloudSyncLayer')?.classList.add('open');renderMini();setState(c.url&&c.key?'idle':'offline',c.url&&c.key?'クラウド設定を確認できます。':'Supabase設定を入力してください。')}
+function open(){const c=config();if($('cloudSupabaseUrl')){$('cloudSupabaseUrl').value=c.url;$('cloudSupabaseUrl').readOnly=true}if($('cloudSupabaseAnon')){$('cloudSupabaseAnon').value=c.key;$('cloudSupabaseAnon').readOnly=true}if($('cloudWorkspaceId')){$('cloudWorkspaceId').value=c.workspace;$('cloudWorkspaceId').readOnly=true}if($('cloudMode')){$('cloudMode').value='cloud';$('cloudMode').disabled=true}$('cloudSyncLayer')?.classList.add('open');renderMini();setState('idle','公開用クラウド設定を使用しています.')}
 function close(){$('cloudSyncLayer')?.classList.remove('open')}
 function disable(){internal=true;try{localStorage.setItem(CFG.mode,'local')}finally{internal=false}setState('offline','クラウド同期をOFFにしました。ローカルデータは残っています。');renderMini()}
 function getState(){const c=config();return{state,configured:!!(c.url&&c.key&&c.workspace),dirty:getMeta('dirty')==='1',lastSyncAt:getMeta('lastSyncAt'),lastRemoteAt:getMeta('lastRemoteAt'),workspace:c.workspace,error:lastError,busy}}
 const originalSet=localStorage.setItem.bind(localStorage),originalRemove=localStorage.removeItem.bind(localStorage);
 if(!window.__apexCloudV330Hooked){localStorage.setItem=function(k,v){originalSet(k,v);if(!internal&&k&&k.startsWith('apex')&&!isExcluded(k))markDirty()};localStorage.removeItem=function(k){originalRemove(k);if(!internal&&k&&k.startsWith('apex')&&!isExcluded(k))markDirty()};window.__apexCloudV330Hooked=true}
 window.CloudSyncApp={open,close,saveConfig,test,push,pull:()=>pull({automatic:false,confirmOverwrite:true}),loginPull:()=>pull({automatic:true,confirmOverwrite:false}),disable,getState,get lastError(){return lastError}};
-function boot(){const c=config();internal=true;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('apexCloudV321::')&&k.endsWith('::conflict'))localStorage.removeItem(k)}}finally{internal=false}renderMini();setState(c.url&&c.key&&c.workspace?'idle':'offline',c.url&&c.key&&c.workspace?'クラウド待機中':'Supabase設定が必要です。');let handled='';const login=e=>{if(e?.detail&&e.detail.loggedIn===false)return;const token=String(localStorage.getItem('apexSecureLoginSessionV290')||'');if(!token||token===handled)return;handled=token;pull({automatic:true,confirmOverwrite:false})};window.addEventListener('apex:auth-ready',login);setTimeout(login,300)}
+function boot(){const c=config();internal=true;try{localStorage.setItem(CFG.url,FIXED_CONFIG.url);localStorage.setItem(CFG.key,FIXED_CONFIG.key);localStorage.setItem(CFG.workspace,FIXED_CONFIG.workspace);localStorage.setItem(CFG.mode,'cloud');for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('apexCloudV321::')&&k.endsWith('::conflict'))localStorage.removeItem(k)}}finally{internal=false}renderMini();setState(c.url&&c.key&&c.workspace?'idle':'offline',c.url&&c.key&&c.workspace?'クラウド待機中':'Supabase設定が必要です。');let handled='';const login=e=>{if(e?.detail&&e.detail.loggedIn===false)return;const token=String(localStorage.getItem('apexSecureLoginSessionV290')||'');if(!token||token===handled)return;handled=token;pull({automatic:true,confirmOverwrite:false})};window.addEventListener('apex:auth-ready',login);setTimeout(login,300)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script>
@@ -1753,37 +1755,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             "'": "&#39;",
           })[c],
       );
+  const FIXED_PUBLIC_CONFIG = Object.freeze({ url: "https://mmlkgwucvcpmtziwikfk.supabase.co", key: "sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC", workspace: "apex-team-01" });
   let adminTab = "requests";
-  function readConfig() {
-    return {
-      url: String(
-        localStorage.getItem(KEYS.url) ||
-          localStorage.getItem(KEYS.fallbackUrl) ||
-          "",
-      )
-        .trim()
-        .replace(/\/+$/, ""),
-      key: String(
-        localStorage.getItem(KEYS.key) ||
-          localStorage.getItem(KEYS.fallbackKey) ||
-          "",
-      ).trim(),
-      workspace: String(
-        localStorage.getItem(KEYS.workspace) || "",
-      ).trim(),
-    };
-  }
-  function saveConfig(url, key, workspace) {
-    (localStorage.setItem(KEYS.url, url),
-      localStorage.setItem(KEYS.key, key),
-      localStorage.setItem(KEYS.workspace, workspace),
-      localStorage.setItem(KEYS.fallbackUrl, url),
-      localStorage.setItem(KEYS.fallbackKey, key),
-      localStorage.removeItem(KEYS.fallbackWorkspace));
-    const wsInput = $("simpleLoginWorkspace");
-    wsInput && (wsInput.value = workspace);
-    const cloudWs = $("cloudWorkspaceId");
-    cloudWs && (cloudWs.value = workspace);
+  function readConfig() { return FIXED_PUBLIC_CONFIG; }
+  function saveConfig() {
+    localStorage.setItem(KEYS.url, FIXED_PUBLIC_CONFIG.url);
+    localStorage.setItem(KEYS.key, FIXED_PUBLIC_CONFIG.key);
+    localStorage.setItem(KEYS.workspace, FIXED_PUBLIC_CONFIG.workspace);
+    localStorage.setItem(KEYS.fallbackUrl, FIXED_PUBLIC_CONFIG.url);
+    localStorage.setItem(KEYS.fallbackKey, FIXED_PUBLIC_CONFIG.key);
+    localStorage.removeItem(KEYS.fallbackWorkspace);
+    const wsInput = $("simpleLoginWorkspace"); if (wsInput) wsInput.value = FIXED_PUBLIC_CONFIG.workspace;
+    const cloudWs = $("cloudWorkspaceId"); if (cloudWs) cloudWs.value = FIXED_PUBLIC_CONFIG.workspace;
   }
   async function api(action, payload = {}, admin = !1) {
     const c = readConfig();
@@ -1838,10 +1821,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         ((links.id = "v290LoginLinks"),
           (links.className = "v290LoginLinks"),
           (links.innerHTML =
-            '\n      <button type="button" class="v290LoginLink" id="v290ApplyOpen">初めて利用する方は利用申請</button>\n      <button type="button" class="v290LoginLink" id="v290ConfigOpen">接続設定</button>'),
+            '\n      <button type="button" class="v290LoginLink" id="v290ApplyOpen">初めて利用する方は利用申請</button>'),
           box.appendChild(links),
-          $("v290ApplyOpen").addEventListener("click", openApply),
-          $("v290ConfigOpen").addEventListener("click", openConfig));
+          $("v290ApplyOpen").addEventListener("click", openApply));
       }
     }
   }
@@ -1929,34 +1911,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   function openConfig() {
     const c = readConfig();
-    (($("v290ConfigUrl").value = c.url),
-      ($("v290ConfigKey").value = c.key),
-      ($("v290ConfigWorkspace").value =
-        $("simpleLoginWorkspace")?.value || c.workspace),
-      setStatus("v290ConfigStatus", ""),
-      $("v290ConfigModal")?.classList.add("open"));
+    $("v290ConfigUrl").value = c.url; $("v290ConfigUrl").readOnly = true;
+    $("v290ConfigKey").value = c.key; $("v290ConfigKey").readOnly = true;
+    $("v290ConfigWorkspace").value = c.workspace; $("v290ConfigWorkspace").readOnly = true;
+    setStatus("v290ConfigStatus", "公開用クラウド設定を使用しています。", "ok");
+    $("v290ConfigModal")?.classList.add("open");
   }
   function closeConfig() {
     $("v290ConfigModal")?.classList.remove("open");
   }
   function persistConfig() {
-    const c = {
-      url: String($("v290ConfigUrl")?.value || "")
-        .trim()
-        .replace(/\/+$/, ""),
-      key: String($("v290ConfigKey")?.value || "").trim(),
-      workspace: String($("v290ConfigWorkspace")?.value || "").trim(),
-    };
-    return c.url && c.key && c.workspace
-      ? (saveConfig(c.url, c.key, c.workspace),
-        setStatus("v290ConfigStatus", "接続設定を保存しました。", "ok"),
-        !0)
-      : (setStatus(
-          "v290ConfigStatus",
-          "Project URL・キー・共有IDを入力してください。",
-          "error",
-        ),
-        !1);
+    saveConfig();
+    setStatus("v290ConfigStatus", "公開用クラウド設定を使用しています。", "ok");
+    return true;
   }
   async function testConfig() {
     if (persistConfig()) {
@@ -2179,19 +2146,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       ensureLoginExtras();
       const email = normEmail($("simpleLoginEmail")?.value),
         name = normName($("simpleLoginName")?.value),
-        workspace = String($("simpleLoginWorkspace")?.value || "").trim(),
+        workspace = FIXED_PUBLIC_CONFIG.workspace,
         button = $("simpleLoginEnter");
-      if (!email || !name || !workspace)
+      if (!email || !name)
         return (
-          setStatus(
-            "v290LoginStatus",
-            "メールアドレス・名前・共有IDを入力してください。",
-            "error",
-          ),
+          setStatus("v290LoginStatus", "メールアドレスと名前を入力してください。", "error"),
           !1
         );
-      const current = readConfig();
-      saveConfig(current.url, current.key, workspace);
+      saveConfig();
       const oldText = button?.textContent || "入室";
       (button && ((button.disabled = !0), (button.textContent = "確認中…")),
         setStatus("v290LoginStatus", "許可情報を確認しています…"));
@@ -2401,8 +2363,9 @@ const $=id=>document.getElementById(id);
 function role(){try{const u=JSON.parse(localStorage.getItem('apexSecureLoginUserV290')||'null');if(u?.role)return String(u.role).toLowerCase()}catch(_){}return String(localStorage.getItem('apexCurrentRoleV174')||localStorage.getItem('apexCurrentRoleV171')||'').toLowerCase()}
 function fmt(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}
 function render(){const box=$('headerCloudControl'),state=$('headerCloudState'),updated=$('headerCloudUpdated'),btn=$('headerCloudPushBtn');if(!box||!state||!updated||!btn)return;const s=window.CloudSyncApp?.getState?.()||{configured:false,dirty:false,state:'offline'};document.body.classList.toggle('v323-cloud-admin',role()==='admin');box.classList.remove('dirty','offline','error');if(!s.configured){state.textContent='未接続';updated.textContent='クラウド設定が必要';box.classList.add('offline');return}if(s.busy||s.state==='syncing'){state.textContent='同期中';updated.textContent='しばらくお待ちください';return}if(s.state==='error'){state.textContent='更新エラー';updated.textContent=s.error||'クラウド設定を確認';box.classList.add('error');return}if(s.state==='needs-review'){state.textContent='確認が必要';updated.textContent='クラウド最新版を確認してください';box.classList.add('error');return}if(s.dirty){state.textContent='未公開の変更あり';updated.textContent='最終更新：'+fmt(s.lastSyncAt);box.classList.add('dirty');return}state.textContent='最新';updated.textContent='最終更新：'+fmt(s.lastSyncAt)}
+async function refresh(){const btn=$('headerCloudPullBtn');if(btn){btn.disabled=true;btn.textContent='取得中…'}try{const ok=await window.CloudSyncApp.pull();render();if(ok)alert('最新データを取得しました。');else{const st=window.CloudSyncApp.getState();if(st.state==='error')alert('最新データを取得できませんでした。\n'+(st.error||window.CloudSyncApp.lastError||''))}return ok}catch(e){alert('最新データの取得に失敗しました。\n'+(e.message||e));return false}finally{if(btn){btn.disabled=false;btn.textContent='最新データ取得'}render()}}
 async function publish(){if(role()!=='admin'){alert('クラウド更新は管理者のみ実行できます。');return}const s=window.CloudSyncApp?.getState?.();if(!s?.configured){alert('Supabase設定がありません。先にクラウド設定を保存してください。');window.CloudSyncApp?.open?.();return}if(!confirm('現在のローカルデータをクラウドへ更新します。\n\nこのまま更新しますか？'))return;const btn=$('headerCloudPushBtn');btn.disabled=true;btn.textContent='更新中…';try{const ok=await window.CloudSyncApp.push();render();if(ok)alert('クラウド更新が完了しました。');else{const detail=window.CloudSyncApp.lastError||$('cloudStatus')?.textContent||'更新を中止しました。';if(window.CloudSyncApp.getState().state==='error')alert('クラウド更新を完了できませんでした。\n'+detail)}}catch(e){alert('クラウド更新に失敗しました。\n'+(e.message||e))}finally{btn.disabled=false;btn.textContent='クラウド更新';render()}}
-window.HeaderCloudPublish={publish,render};
+window.HeaderCloudPublish={publish,refresh,render};
 function boot(){render();window.addEventListener('apex:cloud-state',render);window.addEventListener('apex:auth-ready',render);window.addEventListener('storage',render);document.addEventListener('visibilitychange',()=>{if(!document.hidden)render()})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
@@ -2450,6 +2413,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",markBoot,{once:true});else markBoot();
   window.ApexLifecycleV329=Object.freeze({get booted(){return state.booted},get authReady(){return state.authReady}});
 })();
+</script>
+
+<script id="fixed-public-cloud-config-v331">
+(()=>{"use strict";const cfg={url:"https://mmlkgwucvcpmtziwikfk.supabase.co",key:"sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC",workspace:"apex-team-01"};function apply(){try{localStorage.setItem("apexCloudSupabaseUrl",cfg.url);localStorage.setItem("apexCloudSupabaseAnonKey",cfg.key);localStorage.setItem("apexCloudWorkspaceId",cfg.workspace);localStorage.setItem("apexCloudMode","cloud");localStorage.setItem("apex_login_test_v2_url",cfg.url);localStorage.setItem("apex_login_test_v2_key",cfg.key);localStorage.removeItem("apex_login_test_v2_workspace")}catch(_){}const ws=document.getElementById("simpleLoginWorkspace");if(ws){ws.value=cfg.workspace;const label=ws.closest("label");if(label)label.style.display="none"}document.getElementById("v290ConfigOpen")?.remove();[["v290ConfigUrl","cloudSupabaseUrl"], ["v290ConfigKey","cloudSupabaseAnon"], ["v290ConfigWorkspace","cloudWorkspaceId"]].forEach((ids,i)=>ids.forEach(id=>{const el=document.getElementById(id);if(el){el.value=i===0?cfg.url:i===1?cfg.key:cfg.workspace;el.readOnly=true}}))}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",apply,{once:true}):apply();window.addEventListener("apex:auth-ready",apply)})();
 </script>
 </body>
 <script id="v291-user-management-guard">(()=>{"use strict";function openSecureUserManagement(){const mod=window.ApexSecureLoginV290;mod&&"function"==typeof mod.openAdminPage&&mod.openAdminPage()}function applyGuard(){if(!window.ApexSecureLoginV290)return;window.PermissionRoleV174={...window.PermissionRoleV174||{},openRoleAdmin:openSecureUserManagement},window.UserRoleAdminV172={...window.UserRoleAdminV172||{},show:openSecureUserManagement,render:()=>window.ApexSecureLoginV290.renderAdmin?.()};const panel=document.getElementById("adminUserRole");panel?.classList.contains("active")&&window.ApexSecureLoginV290.openAdminPage()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",applyGuard,{once:!0}):applyGuard(),setTimeout(applyGuard,300)})();</script>
