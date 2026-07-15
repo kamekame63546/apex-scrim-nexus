@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-poi-pin-static-fixed">
+<head><meta name="apex-build" content="loot-route-poi-pin-hover-source-removed">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1149,113 +1149,6 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 #ownerMenuBlock .pageTab[data-page=userRoleAdmin].permission-disabled{opacity:.38!important;filter:grayscale(.55)!important;cursor:not-allowed!important}
 
 
-/* 漁りルートPOIピン完全固定：ホバー等で見た目・位置を一切変えない */
-.lootPoiBtn,
-.lootPoiBtn:hover,
-.lootPoiBtn:focus,
-.lootPoiBtn:focus-visible,
-.lootPoiBtn:active {
-  transform: translate(-50%, -50%) !important;
-  transition: none !important;
-  animation: none !important;
-  filter: none !important;
-  outline: none !important;
-  margin: 0 !important;
-  padding: 0 9px !important;
-  height: 28px !important;
-  border-width: 1px !important;
-  border-color: rgba(255,255,255,.58) !important;
-  box-shadow: 0 5px 15px rgba(0,0,0,.38) !important;
-}
-.lootPoiBtn.unregistered,
-.lootPoiBtn.unregistered:hover,
-.lootPoiBtn.unregistered:focus,
-.lootPoiBtn.unregistered:active {
-  opacity: .46 !important;
-  filter: grayscale(.7) !important;
-}
-.lootAdminMap .lootPoiBtn,
-.lootAdminMap .lootPoiBtn:hover,
-.lootAdminMap .lootPoiBtn:focus,
-.lootAdminMap .lootPoiBtn:focus-visible,
-.lootAdminMap .lootPoiBtn:active {
-  transform: translate(-50%, -50%) !important;
-  transition: none !important;
-  animation: none !important;
-  filter: none !important;
-  outline: none !important;
-  margin: 0 !important;
-  padding: 0 9px !important;
-  height: 28px !important;
-  border-width: 1px !important;
-  border-color: rgba(255,255,255,.58) !important;
-  box-shadow: 0 5px 15px rgba(0,0,0,.38) !important;
-}
-</style>
-<script id="apex-data-core-v335">(()=>{"use strict";
-const native={set:Storage.prototype.setItem,get:Storage.prototype.getItem,remove:Storage.prototype.removeItem};
-const CRITICAL=new Set(["apexV62Clean","apexStatsMatchesV6","apexManualFinalZonesV1","apexRingConsoleTrialsV1","apexMapChoicesV1","apexLandmarksV6","apexScrimsV1","apexPolandScrimsV1","apexFinalZonesV1","apexRingConsoleV1"]);
-const ARRAY_KEYS=new Set(["apexStatsMatchesV6","apexManualFinalZonesV1","apexRingConsoleTrialsV1","apexMapChoicesV1","apexScrimsV1","apexPolandScrimsV1","apexFinalZonesV1","apexRingConsoleV1"]);
-const AUDIT_KEY="apexIntegrityAuditV1";let internal=0;
-const now=()=>new Date().toISOString();
-function parse(raw){if(raw==null)return null;try{return JSON.parse(raw)}catch(_){return raw}}
-function stringify(v){return typeof v==="string"?v:JSON.stringify(v)}
-function valueOf(storage,key){const v=storage?.[key];return typeof v==="string"?parse(v):v}
-function hashText(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16).padStart(8,"0")}
-function metric(value){const count=Array.isArray(value)?value.length:(value&&typeof value==="object"?Object.keys(value).length:(value==null?0:1));return{count,hash:hashText(JSON.stringify(value??null))}}
-function buildIntegrity(storage){const out={version:1,createdAt:now(),critical:{}};for(const k of CRITICAL)out.critical[k]=metric(valueOf(storage,k));return out}
-function currentStorageObject(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)o[k]=parse(native.get.call(localStorage,k))}return o}
-function verifyIntegrity(storage,manifest){if(!manifest?.critical)return true;for(const [k,expected] of Object.entries(manifest.critical)){const actual=metric(valueOf(storage,k));if(Number(expected.count)!==actual.count||String(expected.hash)!==actual.hash)throw Object.assign(new Error(`${k} の整合性検証に失敗しました`),{code:"INTEGRITY_MISMATCH",key:k,expected,actual})}return true}
-function validKey(key,value){let v=value;try{if(typeof v==="string")v=JSON.parse(v)}catch(_){return false}if(ARRAY_KEYS.has(key)&&!Array.isArray(v))return false;if(key==="apexV62Clean"&&(!v||typeof v!=="object"||Array.isArray(v)))return false;return true}
-function snapshot(keys){const data={};for(const k of keys){const raw=native.get.call(localStorage,k);if(raw!==null)data[k]=raw}return{savedAt:now(),integrity:buildIntegrity(Object.fromEntries(Object.entries(data).map(([k,v])=>[k,parse(v)]))),data}}
-function pruneSafetyBackups(keep=2,maxBytes=900000){try{const rows=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!key||!key.startsWith("apexDataSafety::"))continue;const raw=native.get.call(localStorage,key)||"";const stamp=Number(key.split("::").pop())||0;rows.push({key,stamp,size:raw.length})}rows.sort((a,b)=>b.stamp-a.stamp);let bytes=0;rows.forEach((row,index)=>{bytes+=row.size;if(index>=keep||bytes>maxBytes)native.remove.call(localStorage,row.key)})}catch(_){}}
-function storageSetWithRecovery(key,text){try{native.set.call(localStorage,key,text);return}catch(error){const quota=error?.name==="QuotaExceededError"||error?.code===22||error?.code===1014;if(!quota)throw error;pruneSafetyBackups(0,0);native.set.call(localStorage,key,text)}}
-function safeBackup(label,keys=[...CRITICAL]){try{pruneSafetyBackups(1,600000);const snap=snapshot(keys),text=JSON.stringify(snap);if(text.length>600000)return snap;storageSetWithRecovery(`apexDataSafety::${label}::${Date.now()}`,text);pruneSafetyBackups(2,900000);return snap}catch(_){return null}}
-function audit(type,detail={}){try{const list=parse(native.get.call(localStorage,AUDIT_KEY))||[];list.push({at:now(),type,...detail});while(list.length>200)list.shift();native.set.call(localStorage,AUDIT_KEY,JSON.stringify(list))}catch(_){}}
-function rawSet(key,value){native.set.call(localStorage,key,stringify(value))}
-function rawRemove(key){native.remove.call(localStorage,key)}
-function read(key,fallback=null){const raw=native.get.call(localStorage,String(key));if(raw===null)return fallback;const value=parse(raw);return value===null?fallback:value}
-function readJSON(key,fallback=null,{validate=null}={}){const raw=native.get.call(localStorage,String(key));if(raw===null)return fallback;let value;try{value=JSON.parse(raw)}catch(e){audit("read-invalid-json",{key:String(key),error:e.message});return fallback}if(typeof validate==="function"&&!validate(value)){audit("read-validation-failed",{key:String(key)});return fallback}return value}
-function readMany(spec){if(!spec||typeof spec!=="object"||Array.isArray(spec))throw new Error("一括読込指定が不正です");const out={};for(const [key,rule] of Object.entries(spec)){if(rule&&typeof rule==="object"&&!Array.isArray(rule)){out[key]=readJSON(key,rule.fallback??null,{validate:rule.validate??null})}else out[key]=readJSON(key,rule??null)}return out}
-function update(keys,mutator,{backup=true,reason="update",validators={}}={}){const list=Array.isArray(keys)?keys.map(String):Object.keys(keys||{});if(!list.length)throw new Error("更新対象がありません");if(typeof mutator!=="function")throw new Error("更新処理が不正です");const current={};for(const key of list)current[key]=readJSON(key,null);const draft=typeof structuredClone==="function"?structuredClone(current):JSON.parse(JSON.stringify(current));const result=mutator(draft,current);const changes=result&&typeof result==="object"&&!Array.isArray(result)?result:draft;for(const [key,validate] of Object.entries(validators||{})){if(typeof validate==="function"&&!validate(changes[key]))throw new Error(`${key} の更新後データ形式が不正です`)}transaction(changes,{backup,reason});return changes}
-function countOfRaw(raw){const v=parse(raw);return Array.isArray(v)?v.length:null}
-function write(key,value,{backup=true,reason="local-write"}={}){const text=stringify(value);if(CRITICAL.has(key)&&!validKey(key,text))throw new Error(`${key} のデータ形式が不正です`);const previous=native.get.call(localStorage,key),beforeCount=countOfRaw(previous),afterCount=countOfRaw(text);if(backup&&CRITICAL.has(key)&&previous!==null&&previous!==text)safeBackup(`before-${key}`,[key]);internal++;try{storageSetWithRecovery(key,text);if(native.get.call(localStorage,key)!==text)throw new Error(`${key} の保存確認に失敗しました`)}catch(e){if(previous===null)native.remove.call(localStorage,key);else native.set.call(localStorage,key,previous);audit("write-rollback",{key,reason,error:e.message});throw e}finally{internal--}if(beforeCount!=null&&afterCount!=null&&afterCount<beforeCount)audit("count-decrease",{key,reason,before:beforeCount,after:afterCount,decreasedBy:beforeCount-afterCount});return true}
-function transaction(changes,{backup=true,reason="transaction"}={}){if(!changes||typeof changes!=="object"||Array.isArray(changes))throw new Error("トランザクション対象が不正です");const entries=Object.entries(changes),previous=new Map(),texts=new Map();for(const [key,value] of entries){const k=String(key);previous.set(k,native.get.call(localStorage,k));if(value===undefined||value===null){texts.set(k,null);continue}const text=stringify(value);if(CRITICAL.has(k)&&!validKey(k,text))throw new Error(`${k} のデータ形式が不正です`);texts.set(k,text)}if(backup){const keys=entries.map(([k])=>String(k)).filter(k=>native.get.call(localStorage,k)!==null);if(keys.length)safeBackup(`before-${reason}`,keys)}internal++;try{for(const [key,text] of texts){if(text===null)native.remove.call(localStorage,key);else storageSetWithRecovery(key,text)}for(const [key,text] of texts){const actual=native.get.call(localStorage,key);if(text===null?actual!==null:actual!==text)throw new Error(`${key} の保存確認に失敗しました`)}}catch(e){for(const [key,raw] of previous){if(raw===null)native.remove.call(localStorage,key);else native.set.call(localStorage,key,raw)}audit("transaction-rollback",{reason,keys:[...texts.keys()],error:e.message});throw e}finally{internal--}for(const [key,text] of texts){const beforeCount=countOfRaw(previous.get(key)),afterCount=countOfRaw(text);if(beforeCount!=null&&afterCount!=null&&afterCount<beforeCount)audit("count-decrease",{key,reason,before:beforeCount,after:afterCount,decreasedBy:beforeCount-afterCount})}audit("transaction-success",{reason,keys:[...texts.keys()]});return true}
-function decreases(current,incoming){const list=[];for(const k of ARRAY_KEYS){const a=metric(valueOf(current,k)).count,b=metric(valueOf(incoming,k)).count;if(b<a)list.push({key:k,before:a,after:b,decreasedBy:a-b})}return list}
-function replaceStorage(storage,{requireCritical=true,allowDecrease=false,integrity=null,source="replace"}={}){if(!storage||typeof storage!=="object"||Array.isArray(storage))throw new Error("データ形式が不正です");const required=["apexStatsMatchesV6","apexV62Clean","apexManualFinalZonesV1","apexRingConsoleTrialsV1"];
- if(requireCritical){for(const k of required){if(!(k in storage))throw new Error(`データに ${k} がありません`);if(!validKey(k,stringify(storage[k])))throw new Error(`${k} が不正です`)}}
- verifyIntegrity(storage,integrity);const current=currentStorageObject(),drops=decreases(current,storage);if(drops.length&&!allowDecrease){audit("replace-blocked-decrease",{source,drops});throw Object.assign(new Error("置換後に重要データ件数が減るため処理を停止しました"),{code:"DATA_DECREASE_BLOCKED",decreases:drops})}
- const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("apex")&&!k.startsWith("apexCloud")&&!k.startsWith("apexDataSafety::")&&!/Login|CurrentRole|PermissionRole/i.test(k))keys.push(k)}
- const before=snapshot(keys);safeBackup(`before-${source}`,keys);internal++;try{for(const k of keys)native.remove.call(localStorage,k);for(const [k,v] of Object.entries(storage)){if(!k.startsWith("apex")||k.startsWith("apexCloud")||/Login|CurrentRole|PermissionRole/i.test(k))continue;const text=stringify(v);if(CRITICAL.has(k)&&!validKey(k,text))throw new Error(`${k} の復元形式が不正です`);native.set.call(localStorage,k,text)}for(const k of required){if(native.get.call(localStorage,k)===null)throw new Error(`${k} の復元確認に失敗しました`)}const after=currentStorageObject();verifyIntegrity(after,buildIntegrity(storage))}catch(e){const rollbackKeys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("apex")&&!k.startsWith("apexCloud")&&!k.startsWith("apexDataSafety::")&&!/Login|CurrentRole|PermissionRole/i.test(k))rollbackKeys.push(k)}for(const k of rollbackKeys)native.remove.call(localStorage,k);for(const [k,v] of Object.entries(before.data))native.set.call(localStorage,k,v);audit("replace-rollback",{source,error:e.message});throw e}finally{internal--}audit("replace-success",{source,drops,allowDecrease});return true}
-Storage.prototype.setItem=function(key,value){if(this!==localStorage||internal)return native.set.call(this,key,value);return write(String(key),value)};
-window.ApexDataCore={read,readJSON,readMany,update,write,transaction,rawSet,rawRemove,replaceStorage,snapshot,safeBackup,pruneSafetyBackups,parse,buildIntegrity,verifyIntegrity,decreases,audit,validKey,get internal(){return internal>0},withInternal(fn){internal++;try{return fn()}finally{internal--}},native};pruneSafetyBackups(2,900000);
-})();</script><script id="team-registration-policy-v334">(()=>{"use strict";const TRACKER_KEY="apexV62Clean",ALIAS_KEY="apexTeamCanonicalMapV1";const norm=v=>String(v??"").normalize("NFKC").trim().toLowerCase().replace(/[‐‑‒–—―−ーｰ]/g,"-").replace(/[’'`´]/g,"").replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");function read(k,f){return window.ApexDataCore?.readJSON?.(k,f)??f}function currentSplit(){return String(read(TRACKER_KEY,{}).current||window.IntegratedSplit?.current?.()||"").trim()}function registeredTeams(split=currentSplit()){const st=read(TRACKER_KEY,{}),a=Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[];return[...new Set(a.map(v=>String(v||"").trim()).filter(Boolean))]}function rowName(r){return String(r?.team_name??r?.team??r?.teamName??r?.name??"").trim()}function isRegistered(name,split=currentSplit()){const n=norm(name);return !n||registeredTeams(split).some(t=>norm(t)===n)}function isEligibleRow(r,split=currentSplit()){return!!r&&r.exclude_from_stats!==true&&r.team_registry_status!=="unregistered"&&r.unregistered_team!==true&&isRegistered(rowName(r),split)}function eligibleRows(rows,split=currentSplit()){return(Array.isArray(rows)?rows:[]).filter(r=>isEligibleRow(r,split))}window.TeamRegistrationPolicy={registeredTeams,isRegistered,isEligibleRow,eligibleRows,currentSplit};})();</script><script id="v256-final-zone-sidebar-script">!function(){"use strict";function cleanZone(){const grid=document.querySelector("#adminZoneRegister .manualZoneFormGrid");grid&&(grid.classList.remove("v209-compact-flex"),grid.querySelectorAll("input,select").forEach(el=>{el.classList.remove("v208-field-xs","v208-field-sm","v208-field-md","v208-field-lg","v208-field-full"),el.style.removeProperty("width"),el.style.removeProperty("min-width"),el.style.removeProperty("max-width"),el.style.removeProperty("justify-self")}),grid.querySelectorAll(":scope > label").forEach(label=>{label.style.removeProperty("width"),label.style.removeProperty("max-width"),label.style.removeProperty("justify-items"),label.style.removeProperty("text-align")}))}function setSidebar(app,page,button){document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(b=>b.classList.remove("active"));let target=button;if(!target&&app){const sel='.sideMenu [data-app="'+CSS.escape(app)+'"]'+(page?'[data-page="'+CSS.escape(page)+'"]':"");target=document.querySelector(sel)}target&&target.closest(".sideMenu")&&target.classList.add("active")}function inferVisible(){if(document.getElementById("adminZoneRegister")?.classList.contains("active"))return setSidebar("admin","zoneRegister");if(document.getElementById("adminRingConsole")?.classList.contains("active"))return setSidebar("admin","ringConsoleAdmin");if(document.getElementById("adminFightRecord")?.classList.contains("active"))return setSidebar("admin","fightRecord");if(document.getElementById("adminScrimRegister")?.classList.contains("active"))return setSidebar("admin","scrimRegister");if(document.getElementById("adminRegistration")?.classList.contains("active"))return setSidebar("admin","registration");if(document.getElementById("adminUserRole")?.classList.contains("active"))return setSidebar("admin","userRoleAdmin");if(document.getElementById("zoneOverviewPanel")?.classList.contains("active"))return setSidebar("zone","overview");if(document.getElementById("ringConsolePanel")?.classList.contains("active"))return setSidebar("ringConsole","overview");if(document.getElementById("homePanel")?.classList.contains("active"))return setSidebar("home","home");const frame=[...document.querySelectorAll(".appFrame.active")][0];return"frameTracker"===frame?.id?setSidebar("tracker",localStorage.getItem("apexIntegratedTrackerPage")||"analysis"):"frameScrim"===frame?.id?setSidebar("scrim",localStorage.getItem("apexIntegratedScrimPage")||"analysisPage"):void setSidebar("home","home")}function init(){cleanZone(),inferVisible(),document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(btn=>{btn.addEventListener("click",()=>setTimeout(()=>{cleanZone();const app=btn.dataset.app,page=btn.dataset.page;app?setSidebar(app,page,btn):inferVisible()},0),!0)})}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",init,{once:!0}):init(),window.V256LayoutFix={cleanZone:cleanZone,inferVisible:inferVisible,setSidebar:setSidebar}}();</script>
-<meta content="v315-lightweight-safe" name="apex-cleanup-version"/>
-<meta content="phase1-core-v3-complete" name="apex-phase1-core-version"/>
-<meta content="phase2-core-v342" name="apex-phase2-core-version"/>
-
-<style id="unregistered-team-swap-list-v338">
-.scrimUnregisteredSwapCard{margin-top:12px!important}
-.scrimUnregisteredSwapNote{margin:-2px 0 10px;color:#94a5c4;font-size:11px;font-weight:800;line-height:1.55}
-.scrimUnregisteredSwapList{display:grid;gap:8px}
-.scrimUnregisteredSwapRow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(190px,1fr) 88px;gap:8px;align-items:center;border:1px solid #26344f;border-radius:12px;background:#0b1223;padding:8px}
-.scrimUnregisteredSwapName{min-width:0;font-size:12px;font-weight:950;color:#fca5a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
-.scrimUnregisteredSwapRow select{height:32px;border-radius:10px;border:1px solid #26344f;background:#10172a;color:#edf3ff;padding:0 8px;font-size:12px}
-.scrimUnregisteredSwapRow button{height:32px;border:1px solid rgba(59,130,246,.48);border-radius:10px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-size:11px;font-weight:950;cursor:pointer}
-.scrimUnregisteredSwapEmpty{color:#94a5c4;font-size:12px;font-weight:850;padding:14px;border:1px dashed rgba(255,255,255,.14);border-radius:12px;text-align:center}
-@media(max-width:720px){.scrimUnregisteredSwapRow{grid-template-columns:1fr}.scrimUnregisteredSwapRow button{width:100%}}
-</style>
-
-<script id="buildCacheReset18Team">
-(()=>{
-  const BUILD='20260715-18TEAM-R2';
-  try{localStorage.setItem('apexActiveBuild',BUILD)}catch(e){}
-  if('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
-  if(window.caches) caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).catch(()=>{});
-  window.__APEX_BUILD__=BUILD;
-})();
-</script>
-
 <style id="lootRouteStylesV362">
 .lootRoutePanel{position:absolute;inset:0;display:none;padding:16px;overflow:auto;background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)}
 .lootRoutePanel.active{display:block}
@@ -1278,11 +1171,9 @@ window.ApexDataCore={read,readJSON,readMany,update,write,transaction,rawSet,rawR
 .lootMapCanvasWrap{display:flex;justify-content:center;align-items:flex-start;min-height:0}
 .lootMapCanvas{position:relative;display:inline-block;max-width:100%;border:1px solid #26344f;border-radius:16px;overflow:hidden;background:#0b1223;box-shadow:0 14px 34px rgba(0,0,0,.28)}
 .lootMapCanvas{width:100%;aspect-ratio:1/1}.lootMapCanvas>img{display:block;width:100%;height:100%;object-fit:contain}
-.lootPoiBtn{position:absolute;transform:translate(-50%,-50%);height:28px;padding:0 9px;border:1px solid rgba(255,255,255,.58);border-radius:8px;background:rgba(15,23,42,.9);color:#fff;font-size:11px;font-weight:950;white-space:nowrap;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,.38)}
-.lootPoiBtn:hover{border-color:#f97316;filter:brightness(1.12);transform:translate(-50%,-50%)!important}
-.lootPoiBtn,.lootPoiBtn:hover,.lootPoiBtn:focus,.lootPoiBtn:active{transform:translate(-50%,-50%)!important;transition:none!important}
-.lootAdminMap .lootPoiBtn,.lootAdminMap .lootPoiBtn:hover,.lootAdminMap .lootPoiBtn:focus,.lootAdminMap .lootPoiBtn:active{transform:translate(-50%,-50%)!important;filter:none!important}
-.lootPoiBtn.unregistered{opacity:.46;filter:grayscale(.7)}
+.lootPoiBtn{position:absolute;left:0;top:0;box-sizing:border-box;transform:translate(-50%,-50%)!important;translate:none!important;scale:1!important;rotate:0deg!important;width:auto;min-width:0;height:28px;margin:0!important;padding:0 9px!important;border:1px solid rgba(255,255,255,.58)!important;border-radius:8px;background:rgba(15,23,42,.9)!important;color:#fff;font-size:11px;font-weight:950;line-height:26px;white-space:nowrap;cursor:pointer;box-shadow:0 5px 15px rgba(0,0,0,.38)!important;filter:none!important;outline:none!important;transition:none!important;animation:none!important;will-change:auto!important}
+.lootPoiBtn.unregistered{opacity:.46;filter:grayscale(.7)!important}
+.lootAdminMap .lootPoiBtn{cursor:grab;filter:none!important}
 .lootEmpty{width:100%;padding:28px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;color:#94a5c4;text-align:center;font-weight:850;line-height:1.8}
 .lootModal{position:fixed;inset:0;z-index:120000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,6,23,.88);backdrop-filter:blur(5px)}
 .lootModal.open{display:flex}
@@ -3202,7 +3093,7 @@ function setPlacementStatus(changed,message){placementState.dirty=Boolean(change
 function ensurePlacementDraft(map){if(placementState.map!==map||!placementState.draft){const src=positions()[map]||{};placementState.draft=JSON.parse(JSON.stringify(src));placementState.map=map;placementState.dirty=false}return placementState.draft}
 function beginPlacement(){placingPoi=document.getElementById("lootPlacePoi")?.value||"";if(!placingPoi)return alert("配置するPOIを選択してください。");setPlacementStatus(placementState.dirty,`「${placingPoi}」を配置中です。MAP画像上の場所を1回クリックしてください。`)}
 function savePlacement(){const map=document.getElementById("lootPlaceMap")?.value||"";if(!map)return alert("MAPを選択してください。");const p=positions();p[map]=JSON.parse(JSON.stringify(ensurePlacementDraft(map)));write(POS_KEY,p);setPlacementStatus(false,"保存しました。");renderPlacement();}
-async function renderPlacement(){const host=document.getElementById("lootPlacementCanvas");if(!host)return;const map=document.getElementById("lootPlaceMap")?.value||maps()[0]||"";if(!map){host.innerHTML='<div class="lootEmpty">MAPがありません。</div>';return}const img=await imageUrl(mapImageId(map),fallbackMapImage(map)),pos=ensurePlacementDraft(map);host.innerHTML=`<div class="lootAdminMap" id="lootAdminCanvas"><img draggable="false" alt="${esc(map)}" src="${esc(img)}" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('beforeend','<div class=&quot;lootEmpty&quot;>MAP画像が未登録です。<br>上の登録欄からMAP画像を追加してください。</div>')">${Object.entries(pos).map(([poi,v])=>`<button type="button" class="lootPoiBtn" data-poi="${esc(poi)}" style="left:${Number(v.x)||0}%;top:${Number(v.y)||0}%">${esc(poi)}</button>`).join("")}</div>`;setPlacementStatus(placementState.dirty);const canvas=document.getElementById("lootAdminCanvas");if(!canvas)return;canvas.addEventListener("click",e=>{if(!placingPoi||e.target.closest(".lootPoiBtn"))return;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));pos[placingPoi]={x:+x.toFixed(4),y:+y.toFixed(4)};placingPoi="";setPlacementStatus(true);renderPlacement()});canvas.querySelectorAll(".lootPoiBtn").forEach(btn=>{let drag=false,moved=false;btn.addEventListener("pointerdown",e=>{drag=true;moved=false;btn.classList.add("dragging");btn.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation()});btn.addEventListener("pointermove",e=>{if(!drag)return;moved=true;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));btn.style.left=x+"%";btn.style.top=y+"%";e.preventDefault()});const finish=e=>{if(!drag)return;drag=false;btn.classList.remove("dragging");if(moved){pos[btn.dataset.poi]={x:+parseFloat(btn.style.left).toFixed(4),y:+parseFloat(btn.style.top).toFixed(4)};setPlacementStatus(true)}try{btn.releasePointerCapture?.(e.pointerId)}catch(_){}};btn.addEventListener("pointerup",finish);btn.addEventListener("pointercancel",finish);btn.addEventListener("mouseenter",()=>{});btn.addEventListener("focus",()=>{})})}
+async function renderPlacement(){const host=document.getElementById("lootPlacementCanvas");if(!host)return;const map=document.getElementById("lootPlaceMap")?.value||maps()[0]||"";if(!map){host.innerHTML='<div class="lootEmpty">MAPがありません。</div>';return}const img=await imageUrl(mapImageId(map),fallbackMapImage(map)),pos=ensurePlacementDraft(map);host.innerHTML=`<div class="lootAdminMap" id="lootAdminCanvas"><img draggable="false" alt="${esc(map)}" src="${esc(img)}" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('beforeend','<div class=&quot;lootEmpty&quot;>MAP画像が未登録です。<br>上の登録欄からMAP画像を追加してください。</div>')">${Object.entries(pos).map(([poi,v])=>`<button type="button" class="lootPoiBtn" data-poi="${esc(poi)}" style="left:${Number(v.x)||0}%;top:${Number(v.y)||0}%">${esc(poi)}</button>`).join("")}</div>`;setPlacementStatus(placementState.dirty);const canvas=document.getElementById("lootAdminCanvas");if(!canvas)return;canvas.addEventListener("click",e=>{if(!placingPoi||e.target.closest(".lootPoiBtn"))return;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));pos[placingPoi]={x:+x.toFixed(4),y:+y.toFixed(4)};placingPoi="";setPlacementStatus(true);renderPlacement()});canvas.querySelectorAll(".lootPoiBtn").forEach(btn=>{let drag=false,moved=false;btn.addEventListener("pointerdown",e=>{drag=true;moved=false;btn.classList.add("dragging");btn.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation()});btn.addEventListener("pointermove",e=>{if(!drag)return;moved=true;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));btn.style.left=x+"%";btn.style.top=y+"%";e.preventDefault()});const finish=e=>{if(!drag)return;drag=false;btn.classList.remove("dragging");if(moved){pos[btn.dataset.poi]={x:+parseFloat(btn.style.left).toFixed(4),y:+parseFloat(btn.style.top).toFixed(4)};setPlacementStatus(true)}try{btn.releasePointerCapture?.(e.pointerId)}catch(_){}};btn.addEventListener("pointerup",finish);btn.addEventListener("pointercancel",finish)})}
 document.querySelector(".sideMenu")?.addEventListener("click",e=>{const btn=e.target.closest(".pageTab");if(!btn)return;const isLoot=btn.dataset.app==="lootRoute"||btn.dataset.page==="lootRouteAdmin";if(isLoot)return;document.querySelectorAll(".lootRoutePanel.active").forEach(p=>p.classList.remove("active"));closeModal()});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});document.addEventListener("click",e=>{if(e.target?.id==="lootRouteModal")closeModal()});window.addEventListener("storage",e=>{if([DATA_KEY,POS_KEY,ORDER_KEY,TRACKER_KEY,MAP_KEY,LANDMARK_KEY].includes(e.key)){if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs();if(document.getElementById("lootRouteAdminPanel")?.classList.contains("active"))renderAdmin()}});window.addEventListener("apex:loot-route-change",()=>{if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs()});
 window.LootRouteApp={show,showAdmin,openRoute,closeModal,renderAdmin,saveRoute,clearForm,editRoute,deleteRoute,beginPlacement,savePlacement,changePlacementMap};
