@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-placement-state-object-fixed">
+<head><meta name="apex-build" content="loot-route-poi-pin-static-fixed">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1148,6 +1148,49 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 #adminMenuBlock .pageTab[data-app=admin]{opacity:1!important;filter:none!important;pointer-events:auto!important;cursor:pointer!important}
 #ownerMenuBlock .pageTab[data-page=userRoleAdmin].permission-disabled{opacity:.38!important;filter:grayscale(.55)!important;cursor:not-allowed!important}
 
+
+/* 漁りルートPOIピン完全固定：ホバー等で見た目・位置を一切変えない */
+.lootPoiBtn,
+.lootPoiBtn:hover,
+.lootPoiBtn:focus,
+.lootPoiBtn:focus-visible,
+.lootPoiBtn:active {
+  transform: translate(-50%, -50%) !important;
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 9px !important;
+  height: 28px !important;
+  border-width: 1px !important;
+  border-color: rgba(255,255,255,.58) !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,.38) !important;
+}
+.lootPoiBtn.unregistered,
+.lootPoiBtn.unregistered:hover,
+.lootPoiBtn.unregistered:focus,
+.lootPoiBtn.unregistered:active {
+  opacity: .46 !important;
+  filter: grayscale(.7) !important;
+}
+.lootAdminMap .lootPoiBtn,
+.lootAdminMap .lootPoiBtn:hover,
+.lootAdminMap .lootPoiBtn:focus,
+.lootAdminMap .lootPoiBtn:focus-visible,
+.lootAdminMap .lootPoiBtn:active {
+  transform: translate(-50%, -50%) !important;
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 9px !important;
+  height: 28px !important;
+  border-width: 1px !important;
+  border-color: rgba(255,255,255,.58) !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,.38) !important;
+}
 </style>
 <script id="apex-data-core-v335">(()=>{"use strict";
 const native={set:Storage.prototype.setItem,get:Storage.prototype.getItem,remove:Storage.prototype.removeItem};
