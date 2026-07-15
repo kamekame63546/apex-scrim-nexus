@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-navigation-scroll-root-fixed">
+<head><meta name="apex-build" content="loot-route-dedicated-scroll-verified">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1152,8 +1152,9 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <style id="lootRouteStylesV362">
 .lootRoutePanel{position:absolute;inset:0;display:none;padding:16px;overflow-x:hidden!important;overflow-y:auto!important;min-height:0;height:100%;overscroll-behavior:contain;background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)}
 .lootRoutePanel:not(.active){display:none!important;pointer-events:none!important}
-.lootRoutePanel.active{display:flex!important;flex-direction:column!important;pointer-events:auto!important;overflow:hidden!important}
-#lootRouteViewer{flex:1 1 auto;min-height:0;overflow-x:hidden!important;overflow-y:auto!important;padding-bottom:16px;overscroll-behavior:contain}
+.lootRoutePanel.active{display:block!important;pointer-events:auto!important;overflow:hidden!important}
+#lootRoutePanel #lootRouteViewer{position:absolute!important;left:16px!important;right:6px!important;top:62px!important;bottom:8px!important;display:block!important;min-height:0!important;overflow-x:hidden!important;overflow-y:scroll!important;padding:0 10px 24px 0!important;scrollbar-gutter:stable!important;overscroll-behavior:contain!important}
+#lootRouteAdminPanel.active{overflow-x:hidden!important;overflow-y:auto!important}
 .lootRouteHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .lootRouteHead h2{margin:0;font-size:24px;letter-spacing:.04em}
 .lootMapTabs{display:none!important}
