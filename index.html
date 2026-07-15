@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-placement-preserved-image-upload-restored">
+<head><meta name="apex-build" content="loot-route-placement-map-poi-only-fixed">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1149,20 +1149,6 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 #ownerMenuBlock .pageTab[data-page=userRoleAdmin].permission-disabled{opacity:.38!important;filter:grayscale(.55)!important;cursor:not-allowed!important}
 
 </style>
-<style id="lootImageRegistrationVisibilityFix">
-/* POI配置のJavaScriptは変更せず、画像登録欄の表示だけを明確化 */
-#adminLootRoute .lootAdminGrid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}
-#adminLootRoute .lootCard{display:block!important;visibility:visible!important;opacity:1!important;overflow:visible!important;}
-#adminLootRoute .lootCard:first-child{order:1!important;border:1px solid rgba(249,115,22,.5)!important;}
-#adminLootRoute .lootCard:nth-child(2){order:2!important;}
-#adminLootRoute .lootCard:nth-child(3){order:3!important;}
-#adminLootRoute .lootUploadGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}
-#adminLootRoute .lootUploadZone{display:grid!important;min-height:190px!important;visibility:visible!important;opacity:1!important;}
-#adminLootRoute #lootMapUploadZone,#adminLootRoute #lootRouteUploadZone{display:grid!important;}
-#adminLootRoute #lootMapChooseBtn,#adminLootRoute #lootRouteChooseBtn{display:inline-flex!important;align-items:center!important;justify-content:center!important;}
-@media(max-width:900px){#adminLootRoute .lootUploadGrid{grid-template-columns:1fr!important;}}
-</style>
-
 <script id="apex-data-core-v335">(()=>{"use strict";
 const native={set:Storage.prototype.setItem,get:Storage.prototype.getItem,remove:Storage.prototype.removeItem};
 const CRITICAL=new Set(["apexV62Clean","apexStatsMatchesV6","apexManualFinalZonesV1","apexRingConsoleTrialsV1","apexMapChoicesV1","apexLandmarksV6","apexScrimsV1","apexPolandScrimsV1","apexFinalZonesV1","apexRingConsoleV1"]);
@@ -3159,8 +3145,9 @@ function setPendingFile(type,file){if(file&&!file.type.startsWith("image/"))retu
 async function setPreview(type,id,fallback=""){const preview=document.getElementById(type==="map"?"lootMapPreview":"lootRoutePreview"),status=document.getElementById(type==="map"?"lootMapUploadStatus":"lootRouteUploadStatus");if(!preview)return;const blob=await imageGet(id),src=blob?await imageUrl(id):fallback;if(src){preview.innerHTML=`<img alt="登録済み画像" src="${esc(src)}">`;if(status){status.textContent=blob?"登録済み（新しい画像を選ぶと差し替え）":"外部画像を表示中（登録するとブラウザ内保存へ切替）";status.classList.add("ready")}}else{preview.textContent="未登録";if(status){status.textContent="PNG・JPEG・WebPに対応";status.classList.remove("ready")}}}
 async function renderAdmin(){const ms=maps();fillSelect("lootAdminMap",ms);fillSelect("lootPlaceMap",ms);const bind=(id,fn)=>{const e=document.getElementById(id);if(e&&!e.dataset.lootBound){e.addEventListener("change",fn);e.dataset.lootBound="1"}};bind("lootAdminMap",()=>{fillAdminPois();loadCurrent()});bind("lootAdminPoi",loadCurrent);bindUploadZone("lootMapUploadZone","lootMapFile","lootMapChooseBtn","map");bindUploadZone("lootRouteUploadZone","lootRouteFile","lootRouteChooseBtn","route");fillAdminPois();fillPlacePois();await loadCurrent();renderList();renderPlacement()}
 function fillAdminPois(){const m=document.getElementById("lootAdminMap")?.value||maps()[0]||"";fillSelect("lootAdminPoi",poisFor(m))}
-function fillPlacePois(preferred){const mapEl=document.getElementById("lootPlaceMap"),poiEl=document.getElementById("lootPlacePoi");if(!mapEl||!poiEl)return;const m=String(mapEl.value||maps()[0]||"").trim(),list=poisFor(m);fillSelect("lootPlacePoi",list,preferred&&list.includes(preferred)?preferred:list[0]||"")}
-function changePlacementMap(map){const mapEl=document.getElementById("lootPlaceMap");if(mapEl&&map!=null)mapEl.value=String(map);placingPoi="";placementDraft=null;placementDraftMap="";placementDirty=false;fillPlacePois();setPlacementStatus(false,"保存済み");renderPlacement()}
+function placementPoisForMap(map){const key=canonicalLootMap(map),list=LOOT_ROUTE_POI_MASTER[key];return Array.isArray(list)?list.slice():[]}
+function fillPlacePois(preferred){const mapEl=document.getElementById("lootPlaceMap"),poiEl=document.getElementById("lootPlacePoi");if(!mapEl||!poiEl)return;const map=String(mapEl.value||"").trim(),list=placementPoisForMap(map),keep=preferred&&list.includes(preferred)?preferred:(list[0]||"");poiEl.innerHTML="";for(const poi of list){const option=document.createElement("option");option.value=poi;option.textContent=poi;poiEl.appendChild(option)}if(keep)poiEl.value=keep}
+function changePlacementMap(map){const mapEl=document.getElementById("lootPlaceMap");if(!mapEl)return;if(map!=null)mapEl.value=String(map);placingPoi="";placementDraft=null;placementDraftMap="";placementDirty=false;fillPlacePois();setPlacementStatus(false,"保存済み");renderPlacement()}
 async function loadCurrent(){pendingMapFile=null;pendingRouteFile=null;const map=document.getElementById("lootAdminMap")?.value||"",poi=document.getElementById("lootAdminPoi")?.value||"",r=route(map,poi);document.getElementById("lootAdminPhase").value=r?.phase||"第1収縮前";document.getElementById("lootAdminMinute").value=Number(r?.minute)||0;document.getElementById("lootAdminSecond").value=Number(r?.second)||0;const mf=document.getElementById("lootMapFile"),rf=document.getElementById("lootRouteFile");if(mf)mf.value="";if(rf)rf.value="";await Promise.all([setPreview("map",mapImageId(map),fallbackMapImage(map)),setPreview("route",r?.imageId||routeImageId(map,poi),r?.image||"")])}
 function clearForm(){pendingRouteFile=null;document.getElementById("lootAdminMinute").value=0;document.getElementById("lootAdminSecond").value=0;const rf=document.getElementById("lootRouteFile");if(rf)rf.value="";loadCurrent()}
 async function saveRoute(){const map=document.getElementById("lootAdminMap")?.value||"",poi=document.getElementById("lootAdminPoi")?.value||"",phase=document.getElementById("lootAdminPhase")?.value||"第1収縮前",minute=Math.max(0,Math.floor(Number(document.getElementById("lootAdminMinute")?.value)||0)),second=Math.max(0,Math.min(59,Math.floor(Number(document.getElementById("lootAdminSecond")?.value)||0)));if(!map)return alert("MAPを選択してください。");try{if(pendingMapFile)await imagePut(mapImageId(map),pendingMapFile);const d=data();d.__mapImages=d.__mapImages&&typeof d.__mapImages==="object"?d.__mapImages:{};d.__mapImages[map]=`idb:${mapImageId(map)}`;if(poi){const old=route(map,poi);if(pendingRouteFile)await imagePut(routeImageId(map,poi),pendingRouteFile);const hasRoute=Boolean(pendingRouteFile||old?.imageId||old?.image||await imageGet(routeImageId(map,poi)));if(hasRoute)d[key(map,poi)]={map,poi,phase,minute,second,imageId:routeImageId(map,poi)};else if(!pendingMapFile)return alert("漁りルート画像を選択してください。")}write(DATA_KEY,d);pendingMapFile=null;pendingRouteFile=null;await loadCurrent();renderList();await renderPlacement();alert("登録しました。")}catch(e){console.error(e);alert("画像の保存に失敗しました。ブラウザの保存容量または設定を確認してください。")}}
