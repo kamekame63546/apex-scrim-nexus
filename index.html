@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-panel-close-integrated-fixed">
+<head><meta name="apex-build" content="loot-route-navigation-scroll-root-fixed">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1150,14 +1150,16 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 
 
 <style id="lootRouteStylesV362">
-.lootRoutePanel{position:absolute;inset:0;display:none;padding:16px;overflow:auto;background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)}
-.lootRoutePanel.active{display:block}
+.lootRoutePanel{position:absolute;inset:0;display:none;padding:16px;overflow-x:hidden!important;overflow-y:auto!important;min-height:0;height:100%;overscroll-behavior:contain;background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)}
+.lootRoutePanel:not(.active){display:none!important;pointer-events:none!important}
+.lootRoutePanel.active{display:block!important;pointer-events:auto!important}
+#lootRouteViewer{min-height:0;padding-bottom:16px}
 .lootRouteHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
 .lootRouteHead h2{margin:0;font-size:24px;letter-spacing:.04em}
 .lootMapTabs{display:none!important}
 .lootMapTabs button{height:34px;padding:0 14px;border:1px solid #26344f;border-radius:10px;background:#0f172a;color:#aab6d3;font-weight:900;cursor:pointer}
 .lootMapTabs button.active{background:linear-gradient(135deg,#f97316,#c2410c);border-color:#ff9a4a;color:#fff}
-.lootMapsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.lootMapsGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px;align-items:start;width:100%;padding-bottom:20px}
 .lootMapCard{border:1px solid #26344f;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));padding:9px;min-width:0;transition:border-color .15s,background .15s}
 .lootMapCard.viewing{border-color:#f97316;background:rgba(249,115,22,.08)}
 .lootMapCard.dragging{opacity:.58}
@@ -1212,33 +1214,33 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <aside aria-label="アプリ・ページ切替メニュー" class="sideMenu">
 <div class="menuBlock homeMenuBlock">
 <div class="pageTabs" id="tabsHome">
-<button class="pageTab active" data-app="home" data-page="home" onclick="HomeApp.show()">ホーム</button>
+<button class="pageTab active" data-app="home" data-page="home" onclick="window.LootRouteApp?.leave?.();HomeApp.show()">ホーム</button>
 </div>
 </div>
 <div class="menuBlock">
 <span class="menuLabel">スクリムデータ</span>
 <div class="pageTabs" id="tabsScrim">
-<button class="pageTab" data-app="scrim" data-page="analysisPage" onclick="IntegratedApp.go('scrim','analysisPage')">メタ分析</button>
-<button class="pageTab" data-app="scrim" data-page="teamDetailPage" onclick="IntegratedApp.go('scrim','teamDetailPage')">チーム分析</button>
-<button class="pageTab" data-app="scrim" data-page="dashboardPage" onclick="IntegratedApp.go('scrim','dashboardPage')">ランキング</button>
+<button class="pageTab" data-app="scrim" data-page="analysisPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','analysisPage')">メタ分析</button>
+<button class="pageTab" data-app="scrim" data-page="teamDetailPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','teamDetailPage')">チーム分析</button>
+<button class="pageTab" data-app="scrim" data-page="dashboardPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','dashboardPage')">ランキング</button>
 </div>
 </div>
 <div class="menuBlock">
 <span class="menuLabel">ファイトデータ</span>
 <div class="pageTabs" id="tabsTracker">
-<button class="pageTab" data-app="tracker" data-page="analysis" onclick="IntegratedApp.go('tracker','analysis')">ファイト分析</button>
+<button class="pageTab" data-app="tracker" data-page="analysis" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('tracker','analysis')">ファイト分析</button>
 </div>
 </div>
 <div class="menuBlock">
 <span class="menuLabel">安置</span>
 <div class="pageTabs" id="tabsZone">
-<button class="pageTab" data-app="zone" data-page="overview" onclick="ZoneOverviewApp.show()">最終安置一覧</button>
+<button class="pageTab" data-app="zone" data-page="overview" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.show()">最終安置一覧</button>
 </div>
 </div>
 <div class="menuBlock">
 <span class="menuLabel">リングコンソール</span>
 <div class="pageTabs" id="tabsRingConsole">
-<button class="pageTab" data-app="ringConsole" data-page="overview" onclick="RingConsoleApp.show()">確率</button>
+<button class="pageTab" data-app="ringConsole" data-page="overview" onclick="window.LootRouteApp?.leave?.();RingConsoleApp.show()">確率</button>
 </div>
 </div>
 <div class="menuBlock">
@@ -1250,25 +1252,25 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="menuBlock" id="adminMenuBlock">
 <span class="menuLabel">登録</span>
 <div class="pageTabs" id="tabsAdmin">
-<button class="pageTab" data-app="admin" data-page="registration" onclick="IntegratedApp.registration()">データ登録</button>
+<button class="pageTab" data-app="admin" data-page="registration" onclick="window.LootRouteApp?.leave?.();IntegratedApp.registration()">データ登録</button>
 <button class="pageTab" data-app="admin" data-page="lootRouteAdmin" onclick="LootRouteApp.showAdmin()">漁りルート登録</button>
-<button class="pageTab" data-app="admin" data-page="fightRecord" onclick="FightRecordAdmin.show()">ファイト登録</button>
-<button class="pageTab" data-app="admin" data-page="scrimRegister" onclick="ScrimRegisterAdmin.show('normal')">スクリム登録</button>
-<button class="pageTab" data-app="admin" data-page="zoneRegister" onclick="ManualZoneAdmin.show()">最終安置登録</button>
-<button class="pageTab" data-app="admin" data-page="ringConsoleAdmin" onclick="RingConsoleCleanV164.showAdmin()">リングコンソール登録</button>
+<button class="pageTab" data-app="admin" data-page="fightRecord" onclick="window.LootRouteApp?.leave?.();FightRecordAdmin.show()">ファイト登録</button>
+<button class="pageTab" data-app="admin" data-page="scrimRegister" onclick="window.LootRouteApp?.leave?.();ScrimRegisterAdmin.show('normal')">スクリム登録</button>
+<button class="pageTab" data-app="admin" data-page="zoneRegister" onclick="window.LootRouteApp?.leave?.();ManualZoneAdmin.show()">最終安置登録</button>
+<button class="pageTab" data-app="admin" data-page="ringConsoleAdmin" onclick="window.LootRouteApp?.leave?.();RingConsoleCleanV164.showAdmin()">リングコンソール登録</button>
 </div>
 </div>
 <div class="menuBlock adminOnlyBlock" id="ownerMenuBlock">
 <span class="menuLabel">管理者</span>
 <div class="pageTabs" id="tabsOwner">
-<button class="pageTab" data-app="admin" data-page="userRoleAdmin" onclick="PermissionRoleV174.openRoleAdmin()">権限管理</button>
-<button class="pageTab" data-app="admin" data-page="systemManagement" onclick="SystemManagementV293.open()">システム管理</button>
+<button class="pageTab" data-app="admin" data-page="userRoleAdmin" onclick="window.LootRouteApp?.leave?.();PermissionRoleV174.openRoleAdmin()">権限管理</button>
+<button class="pageTab" data-app="admin" data-page="systemManagement" onclick="window.LootRouteApp?.leave?.();SystemManagementV293.open()">システム管理</button>
 </div>
 </div>
 </aside>
 <section class="stage">
 <div aria-label="ホーム" class="homePanel active" id="homePanel">
-<div class="homeTitle"><div><h2>ホーム</h2><div class="homeSub" id="homeOwnTeamLabel">自チーム未選択</div></div><button class="pageTab" onclick="HomeApp.render()" style="width:auto;height:34px">更新</button></div>
+<div class="homeTitle"><div><h2>ホーム</h2><div class="homeSub" id="homeOwnTeamLabel">自チーム未選択</div></div><button class="pageTab" onclick="window.LootRouteApp?.leave?.();HomeApp.render()" style="width:auto;height:34px">更新</button></div>
 <div class="homeGrid">
 <section class="homeSection"><h3>スクリム成績</h3><div class="homeMetrics" id="homeScrimMetrics"></div><div class="homeMapMetrics" id="homeMapMetrics"></div></section>
 <section class="homeSection"><h3>ファイト成績</h3><div class="homeMetrics" id="homeFightMetrics"></div><div id="homeFightTable"></div></section>
@@ -1281,18 +1283,18 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <iframe class="appFrame" id="frameTracker" title="ファイト記録"></iframe>
 <iframe class="appFrame" id="frameScrim" title="スクリムデータ"></iframe>
 <div aria-label="最終安置" class="homePanel zoneOverviewPanel" id="zoneOverviewPanel">
-<div class="homeTitle"><div><h2>最終安置</h2><div class="homeSub"></div></div><button class="pageTab" onclick="ZoneOverviewApp.render()" style="width:auto;height:34px">更新</button></div>
+<div class="homeTitle"><div><h2>最終安置</h2><div class="homeSub"></div></div><button class="pageTab" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.render()" style="width:auto;height:34px">更新</button></div>
 <div class="zoneOverviewTools">
 <label>開始日<input id="zoneOverviewFrom" onchange="ZoneOverviewApp.onDateChange()" type="date"/></label>
 <label>終了日<input id="zoneOverviewTo" onchange="ZoneOverviewApp.onDateChange()" type="date"/></label>
-<button class="pageTab" data-zone-period="week1" onclick="ZoneOverviewApp.setPeriod('week1')" type="button">1週間表示</button>
-<button class="pageTab" data-zone-period="week2" onclick="ZoneOverviewApp.setPeriod('week2')" type="button">2週間表示</button>
-<button class="pageTab" data-zone-period="all" onclick="ZoneOverviewApp.setPeriod('all')" type="button">全期間</button>
+<button class="pageTab" data-zone-period="week1" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.setPeriod('week1')" type="button">1週間表示</button>
+<button class="pageTab" data-zone-period="week2" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.setPeriod('week2')" type="button">2週間表示</button>
+<button class="pageTab" data-zone-period="all" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.setPeriod('all')" type="button">全期間</button>
 </div>
 <div id="zoneOverviewContent"></div>
 </div>
 <div aria-label="リングコンソール確率" class="homePanel ringConsolePanel" id="ringConsolePanel">
-<div class="homeTitle"><div><h2>リングコンソール確率</h2><div class="homeSub">MAP別のリングコンソール出現確率</div></div><button class="pageTab" onclick="RingConsoleApp.render()" style="width:auto;height:34px">更新</button></div>
+<div class="homeTitle"><div><h2>リングコンソール確率</h2><div class="homeSub">MAP別のリングコンソール出現確率</div></div><button class="pageTab" onclick="window.LootRouteApp?.leave?.();RingConsoleApp.render()" style="width:auto;height:34px">更新</button></div>
 <div id="ringConsoleContent"></div>
 </div>
 
@@ -1302,7 +1304,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
   <div id="lootRouteViewer"></div>
 </div>
 <div aria-label="漁りルート登録" class="lootRoutePanel" id="lootRouteAdminPanel">
-  <div class="lootRouteHead"><div><h2>漁りルート登録</h2></div><button class="pageTab" style="width:auto;height:34px" onclick="LootRouteApp.show()">閲覧画面へ</button></div>
+  <div class="lootRouteHead"><div><h2>漁りルート登録</h2></div><button class="pageTab" style="width:auto;height:34px" onclick="window.LootRouteApp?.leave?.();LootRouteApp.show()">閲覧画面へ</button></div>
   <div class="lootAdminGrid">
     <section class="lootCard"><h3>画像・出発時間登録</h3>
       <div class="lootForm">
@@ -3096,10 +3098,24 @@ function ensurePlacementDraft(map){if(placementState.map!==map||!placementState.
 function beginPlacement(){placingPoi=document.getElementById("lootPlacePoi")?.value||"";if(!placingPoi)return alert("配置するPOIを選択してください。");setPlacementStatus(placementState.dirty,`「${placingPoi}」を配置中です。MAP画像上の場所を1回クリックしてください。`)}
 function savePlacement(){const map=document.getElementById("lootPlaceMap")?.value||"";if(!map)return alert("MAPを選択してください。");const p=positions();p[map]=JSON.parse(JSON.stringify(ensurePlacementDraft(map)));write(POS_KEY,p);setPlacementStatus(false,"保存しました。");renderPlacement();}
 async function renderPlacement(){const host=document.getElementById("lootPlacementCanvas");if(!host)return;const map=document.getElementById("lootPlaceMap")?.value||maps()[0]||"";if(!map){host.innerHTML='<div class="lootEmpty">MAPがありません。</div>';return}const img=await imageUrl(mapImageId(map),fallbackMapImage(map)),pos=ensurePlacementDraft(map);host.innerHTML=`<div class="lootAdminMap" id="lootAdminCanvas"><img draggable="false" alt="${esc(map)}" src="${esc(img)}" onerror="this.style.display='none';this.parentElement.insertAdjacentHTML('beforeend','<div class=&quot;lootEmpty&quot;>MAP画像が未登録です。<br>上の登録欄からMAP画像を追加してください。</div>')">${Object.entries(pos).map(([poi,v])=>`<button type="button" class="lootPoiBtn" data-poi="${esc(poi)}" style="left:${Number(v.x)||0}%;top:${Number(v.y)||0}%">${esc(poi)}</button>`).join("")}</div>`;setPlacementStatus(placementState.dirty);const canvas=document.getElementById("lootAdminCanvas");if(!canvas)return;canvas.addEventListener("click",e=>{if(!placingPoi||e.target.closest(".lootPoiBtn"))return;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));pos[placingPoi]={x:+x.toFixed(4),y:+y.toFixed(4)};placingPoi="";setPlacementStatus(true);renderPlacement()});canvas.querySelectorAll(".lootPoiBtn").forEach(btn=>{let drag=false,moved=false;btn.addEventListener("pointerdown",e=>{drag=true;moved=false;btn.classList.add("dragging");btn.setPointerCapture(e.pointerId);e.preventDefault();e.stopPropagation()});btn.addEventListener("pointermove",e=>{if(!drag)return;moved=true;const r=canvas.getBoundingClientRect(),x=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100)),y=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));btn.style.left=x+"%";btn.style.top=y+"%";e.preventDefault()});const finish=e=>{if(!drag)return;drag=false;btn.classList.remove("dragging");if(moved){pos[btn.dataset.poi]={x:+parseFloat(btn.style.left).toFixed(4),y:+parseFloat(btn.style.top).toFixed(4)};setPlacementStatus(true)}try{btn.releasePointerCapture?.(e.pointerId)}catch(_){}};btn.addEventListener("pointerup",finish);btn.addEventListener("pointercancel",finish)})}
-function leaveLootRoute(){document.querySelectorAll(".lootRoutePanel").forEach(p=>p.classList.remove("active"));closeModal()}
-document.querySelector(".sideMenu")?.addEventListener("click",e=>{const btn=e.target.closest(".pageTab");if(!btn)return;const isLoot=btn.dataset.app==="lootRoute"||btn.dataset.page==="lootRouteAdmin";if(!isLoot)leaveLootRoute()},true);
+function leaveLootRoute(){
+  document.querySelectorAll(".lootRoutePanel").forEach(p=>{p.classList.remove("active");p.scrollTop=0});
+  closeModal();
+}
+function isLootNavigationButton(btn){return Boolean(btn&&(btn.dataset.app==="lootRoute"||btn.dataset.page==="lootRouteAdmin"))}
+function closeLootBeforeOtherNavigation(e){
+  const btn=e.target?.closest?.(".sideMenu .pageTab");
+  if(btn&&!isLootNavigationButton(btn))leaveLootRoute();
+}
+document.addEventListener("pointerdown",closeLootBeforeOtherNavigation,true);
+document.addEventListener("click",e=>{
+  const btn=e.target?.closest?.(".sideMenu .pageTab");
+  if(!btn||isLootNavigationButton(btn))return;
+  leaveLootRoute();
+  requestAnimationFrame(leaveLootRoute);
+},true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});document.addEventListener("click",e=>{if(e.target?.id==="lootRouteModal")closeModal()});window.addEventListener("storage",e=>{if([DATA_KEY,POS_KEY,ORDER_KEY,TRACKER_KEY,MAP_KEY,LANDMARK_KEY].includes(e.key)){if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs();if(document.getElementById("lootRouteAdminPanel")?.classList.contains("active"))renderAdmin()}});window.addEventListener("apex:loot-route-change",()=>{if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs()});
-window.LootRouteApp={show,showAdmin,openRoute,closeModal,renderAdmin,saveRoute,clearForm,editRoute,deleteRoute,beginPlacement,savePlacement,changePlacementMap};
+window.LootRouteApp={show,showAdmin,leave:leaveLootRoute,openRoute,closeModal,renderAdmin,saveRoute,clearForm,editRoute,deleteRoute,beginPlacement,savePlacement,changePlacementMap};
 })();</script>
 </body>
 </html>
