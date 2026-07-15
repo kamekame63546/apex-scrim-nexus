@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="v360-team-name-migration">
+<head><meta name="apex-build" content="v361-team-name-migration-fixed">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1913,12 +1913,13 @@ return{
 @media(max-width:700px){#adminRegistration .teamMigrationGridV1{grid-template-columns:1fr}}
 </style>
 <script id="team-name-migration-v1">(()=>{"use strict";
-const MAP_KEY="apexTeamNameMigrationMapV1";
-const AUDIT_KEY="apexTeamNameMigrationAuditV1";
+const MAP_KEY="apexTeamNameMigrationMapV2";
+const AUDIT_KEY="apexTeamNameMigrationAuditV2";
 const TARGET_KEYS=new Set(["apexStatsMatchesV6","apexScrimsV1","apexPolandScrimsV1","apexLandmarksV6","apexFinalZonesV1"]);
 const TEAM_FIELDS=new Set(["team_name","teamName","team","squad","opponent","opponentTeam","enemy","enemyTeam","own_team","ownTeam","myTeam","winnerTeam"]);
 const SPLIT_FIELDS=["split","Split","splitName","split_name"];
 const text=v=>String(v??"");
+function normalizeName(value){return text(value).normalize("NFKC").trim().replace(/\s+/g," ");}
 function readJson(key,fallback){try{const v=JSON.parse(localStorage.getItem(key)||"");return v??fallback}catch(_){return fallback}}
 function currentSplit(){try{return text(window.IntegratedSplit?.current?.()||readJson("apexV62Clean",{}).current)}catch(_){return text(readJson("apexV62Clean",{}).current)}}
 function ownSplit(node,inherited){if(!node||typeof node!=="object")return inherited;for(const k of SPLIT_FIELDS)if(node[k]!==undefined&&node[k]!==null&&text(node[k])!=="")return text(node[k]);return inherited}
@@ -1965,7 +1966,7 @@ function audit(entry){const rows=readJson(AUDIT_KEY,[]);rows.unshift(entry);loca
 function refreshAll(){for(const fn of [()=>window.HomeApp?.render?.(),()=>window.ScrimSavedList?.render?.(),()=>window.IntegratedApp?.refreshGlobalSplit?.(),()=>window.IntegratedApp?.highlightOwnTeamAll?.(),()=>window.TeamSplitV243?.render?.()])try{fn()}catch(_){}window.dispatchEvent(new StorageEvent("storage",{key:"apexStatsMatchesV6"}))}
 function migrate({split,oldName,newName,rememberMapping=true,updateTeamRegistry=true}={}){
  split=text(split);oldName=text(oldName);newName=text(newName);
- if(!split)throw new Error("対象Splitを選択してください.");if(!oldName)throw new Error("旧チーム名を入力してください.");if(!newName)throw new Error("新チーム名を選択してください.");console.log("oldName=", JSON.stringify(oldName));console.log("newName=", JSON.stringify(newName));console.log("equal=", oldName === newName);if(oldName===newName)throw new Error("旧名と新名が同じです。");
+ if(!split)throw new Error("対象Splitを選択してください.");if(!oldName)throw new Error("旧チーム名を入力してください.");if(!newName)throw new Error("新チーム名を選択してください.");if(oldName===newName)throw new Error("旧名と新名が同じです。");
  const changed={},rawBackup={},detail={fields:0,keys:0,storageKeys:0};
  for(let i=0;i<localStorage.length;i++){
   const key=localStorage.key(i);if(!key||!TARGET_KEYS.has(key))continue;
@@ -1986,9 +1987,52 @@ function migrate({split,oldName,newName,rememberMapping=true,updateTeamRegistry=
 function applyMappingsToValue(value){const maps=readJson(MAP_KEY,{});if(!maps||typeof maps!=="object")return value;for(const [split,pairs] of Object.entries(maps)){if(!pairs||typeof pairs!=="object")continue;for(const [oldName,newName] of Object.entries(pairs))migrateNode(value,split,oldName,newName,"",{fields:0,keys:0})}return value}
 const nativeSet=Storage.prototype.setItem;let internal=false;
 Storage.prototype.setItem=function(key,value){if(!internal&&TARGET_KEYS.has(String(key))&&typeof value==="string"&&value.startsWith("[")||(!internal&&TARGET_KEYS.has(String(key))&&typeof value==="string"&&value.startsWith("{"))){try{const parsed=JSON.parse(value);internal=true;value=JSON.stringify(applyMappingsToValue(parsed))}catch(_){}finally{internal=false}}return nativeSet.call(this,key,value)};
-function registeredTeams(split){const st=readJson("apexV62Clean",{});return (Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[]).map(text)}
-function renderCard(){const card=document.getElementById("teamMigrationCardV1"),select=document.getElementById("teamMigrationNewV1");if(!card||!select)return;const split=currentSplit(),teams=registeredTeams(split),current=select.value;select.innerHTML='<option value="">登録チームを選択</option>'+teams.map(v=>`<option value="${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}">${v.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</option>`).join("");if(current&&teams.includes(current))select.value=current;card.dataset.split=split}
-function bind(){document.addEventListener("click",e=>{console.log("TEAM MIGRATION CLICK");if(e.target?.id!=="teamMigrationRunV1")return;e.preventDefault();const oldNameInput=document.getElementById("teamMigrationOldV1");const newNameSelect=document.getElementById("teamMigrationNewV1");const oldName=oldNameInput?.value?.trim()||"";const newName=newNameSelect?.value?.trim()||"";console.log({ oldName, newName });const message=[`旧チーム名：${oldName||"（未入力）"}`,"","↓","",`新チーム名：${newName||"（未選択）"}`,"","現在のSplitのみ移行します。","","実行しますか？"].join("\n");if(!confirm(message))return;const resultEl=document.getElementById("teamMigrationResultV1");const KEY="apexScrimsV1";const SPLIT_FIELDS=["split","Split","splitName","split_name"];const TEAM_FIELDS=new Set(["team","team_name","teamName","opponent","opponentTeam","enemy","enemyTeam","own_team","ownTeam","myTeam","winnerTeam","loserTeam","teams","teamList","teamNames","opponentTeams","enemyTeams"]);function readJson(key,fallback){try{const parsed=JSON.parse(localStorage.getItem(key)||"");return parsed??fallback}catch(_){return fallback}}function currentSplit(){try{const direct=String(window.IntegratedSplit?.current?.()||"").trim();if(direct)return direct}catch(_){}try{const st=JSON.parse(localStorage.getItem("apexV62Clean")||"{}");return String(st?.current||"").trim()}catch(_){return ""}}function resolveSplit(node,inherited){if(!node||typeof node!="object")return inherited;for(const key of SPLIT_FIELDS){const value=node[key];if(typeof value==="string"&&value.trim())return value.trim()}return inherited}function walk(node,targetSplit,oldName,newName,inheritedSplit,stats){if(Array.isArray(node)){for(let i=0;i<node.length;i++)walk(node[i],targetSplit,oldName,newName,inheritedSplit,stats);return node}if(!node||typeof node!="object")return node;const split=resolveSplit(node,inheritedSplit);const eligible=split===targetSplit;for(const [key,value] of Object.entries(node)){if(eligible&&TEAM_FIELDS.has(key)){if(typeof value==="string"&&value===oldName){node[key]=newName;stats.count++;}else if(Array.isArray(value)){for(let i=0;i<value.length;i++){if(typeof value[i]==="string"&&value[i]===oldName){value[i]=newName;stats.count++;}}}continue}if(value&&typeof value==="object")walk(value,targetSplit,oldName,newName,split,stats)}return node}const targetSplit=currentSplit();if(!targetSplit||!oldName||!newName){if(resultEl)resultEl.textContent="旧チーム名と新チーム名を入力してください。";return}let data=readJson(KEY,[]);if(!Array.isArray(data))data=[];const stats={count:0};walk(data,targetSplit,oldName,newName,"",stats);localStorage.setItem(KEY,JSON.stringify(data));if(resultEl)resultEl.textContent=`${stats.count}件のスクリムデータを更新しました。`;try{window.refreshScrimList?.()}catch(_){ }try{window.ScrimSavedList?.render?.()}catch(_){ }try{window.HomeApp?.render?.()}catch(_){ }},true)}
+function registeredTeams(split){
+ const st=readJson("apexV62Clean",{});
+ const raw=Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[];
+ const names=[];
+ for(const value of raw){
+  const source=text(value);
+  let display=source;
+  try{display=text(window.DisplayAliasV229?.alias?.("team",source)||source)}catch(_){}
+  if(display&&!names.includes(display))names.push(display);
+ }
+ return names;
+}
+function escapeHtml(value){return text(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function renderCard(){
+ const card=document.getElementById("teamMigrationCardV1"),select=document.getElementById("teamMigrationNewV1");
+ if(!card||!select)return;
+ const split=currentSplit(),teams=registeredTeams(split),current=select.value;
+ select.innerHTML='<option value="">登録チームを選択</option>'+teams.map(name=>`<option value="${escapeHtml(name)}" data-team-name="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+ if(current&&teams.includes(current))select.value=current;
+ card.dataset.split=split;
+}
+function bind(){
+ document.addEventListener("click",event=>{
+  const button=event.target?.closest?.("#teamMigrationRunV1");
+  if(!button)return;
+  event.preventDefault();
+  const oldInput=document.getElementById("teamMigrationOldV1");
+  const newSelect=document.getElementById("teamMigrationNewV1");
+  const resultEl=document.getElementById("teamMigrationResultV1");
+  const oldName=oldInput?.value??"";
+  const selectedOption=newSelect?.selectedOptions?.[0]||null;
+  const newName=text(selectedOption?.dataset?.teamName||selectedOption?.value||selectedOption?.textContent||"");
+  const split=currentSplit();
+  if(!split||!oldName||!newName){if(resultEl)resultEl.textContent="旧チーム名と新チーム名を入力してください。";return}
+  const message=[`旧チーム名：${oldName}`,"","↓","",`新チーム名：${newName}`,"",`対象Split：${split}`,"","関連する保存済みデータを完全一致で移行します。","実行しますか？"].join("\n");
+  if(!confirm(message))return;
+  try{
+   const detail=migrate({split,oldName,newName,rememberMapping:true,updateTeamRegistry:true});
+   if(resultEl)resultEl.textContent=`移行完了：${detail.fields}件の項目、${detail.keys}件のキー、${detail.storageKeys}個の保存先を更新しました。`;
+   renderCard();
+  }catch(error){
+   if(resultEl)resultEl.textContent=`エラー：${error?.message||error}`;
+   alert(`チーム名移行に失敗しました。\n${error?.message||error}`);
+  }
+ },true);
+}
 function init(){renderCard();bind();document.addEventListener("click",e=>{const btn=e.target.closest?.('[data-app="admin"][data-page="registration"]');if(btn)setTimeout(renderCard,80)},true);window.addEventListener("storage",e=>{e.key==="apexV62Clean"&&setTimeout(renderCard,50)});setTimeout(renderCard,500);setTimeout(renderCard,1400)}
 window.TeamNameMigrationV1={migrate,applyMappingsToValue,render:renderCard};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
