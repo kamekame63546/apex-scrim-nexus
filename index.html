@@ -2725,12 +2725,24 @@ window.Phase3CoreV343={refresh,diagnose,disableRingViewerDrag,state};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
 
-<script id="team-registration-exact-audit-v356">
+<script id="team-auto-replace-v1">
 (()=>{"use strict";
-const TRACKER_KEY="apexV62Clean",MATCH_KEYS=["apexStatsMatchesV6","apexScrimsV1","apexPolandScrimsV1"],ALIAS_KEY="apexTeamCanonicalMapV1";
+const TRACKER_KEY="apexV62Clean";
+const MATCH_KEYS=["apexStatsMatchesV6","apexScrimsV1","apexPolandScrimsV1"];
+const MAP_KEY="apexTeamAutoReplaceV1";
 const text=v=>String(v??"").normalize("NFKC").trim();
-const teamKey=v=>text(v).toLocaleLowerCase("ja").replace(/[‐‑‒–—―−ーｰ]/g,"-").replace(/[’'`´]/g,"").replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");
+const teamKey=v=>text(v).toLocaleLowerCase("ja")
+ .replace(/[‐‑‒–—―−ーｰ]/g,"-")
+ .replace(/[’'`´]/g,"")
+ .replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");
 function read(k,f){try{const raw=localStorage.getItem(k);return raw==null?f:JSON.parse(raw)}catch(_){return f}}
+function writeMany(updates,reason){
+ if(!Object.keys(updates).length)return false;
+ if(window.ApexDataCore?.transaction)window.ApexDataCore.transaction(updates,{reason});
+ else Object.entries(updates).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
+ window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{reason,keys:Object.keys(updates)}}));
+ return true;
+}
 function canonicalSplit(v){return text(v).replace(/[\s\u3000]+/g," ")}
 function currentSplit(){return canonicalSplit(read(TRACKER_KEY,{})?.current||window.IntegratedSplit?.current?.()||"")}
 function registeredTeams(split=currentSplit()){
@@ -2738,48 +2750,110 @@ function registeredTeams(split=currentSplit()){
  const source=Array.isArray(groups[split])?groups[split]:[];
  return [...new Map(source.map(v=>{const n=text(typeof v==="object"?(v.team_name??v.teamName??v.team??v.name):v);return[teamKey(n),n]}).filter(([k,n])=>k&&n)).values()];
 }
-function teamField(row){if(!row||typeof row!=="object")return null;for(const k of ["team_name","teamName","team","name","squad"]){if(typeof row[k]==="string"&&text(row[k]))return{key:k,name:text(row[k])}}return null}
-function rowsField(match){if(!match||typeof match!=="object")return null;for(const k of ["rows","teams","results","standings"]){if(Array.isArray(match[k]))return{key:k,rows:match[k]}}return null}
+function teamField(row){
+ if(!row||typeof row!=="object")return null;
+ for(const k of ["team_name","teamName","team","name","squad"]){
+  if(typeof row[k]==="string"&&text(row[k]))return{key:k,name:text(row[k])};
+ }
+ return null;
+}
+function rowsField(match){
+ if(!match||typeof match!=="object")return null;
+ for(const k of ["rows","teams","results","standings"]){if(Array.isArray(match[k]))return{key:k,rows:match[k]}}
+ return null;
+}
 function splitMatches(match,split){const ms=canonicalSplit(match?.split||"");return !split||!ms||ms===split}
+function readMappings(){
+ const raw=read(MAP_KEY,{});return raw&&typeof raw==="object"&&!Array.isArray(raw)?raw:{};
+}
+function saveMapping(oldName,newName){
+ const key=teamKey(oldName);if(!key||!text(newName))return false;
+ const map=readMappings();
+ map[key]={source:text(oldName),target:text(newName),updatedAt:new Date().toISOString()};
+ return writeMany({[MAP_KEY]:map},"team-auto-replace-map-save-v1");
+}
+function deleteMapping(oldName){
+ const key=teamKey(oldName),map=readMappings();if(!map[key])return false;
+ delete map[key];return writeMany({[MAP_KEY]:map},"team-auto-replace-map-delete-v1");
+}
+function targetFor(name,split){
+ const rec=readMappings()[teamKey(name)];if(!rec?.target)return"";
+ const registered=new Map(registeredTeams(split).map(t=>[teamKey(t),t]));
+ return registered.get(teamKey(rec.target))||"";
+}
+let applying=false;
+function applyMappings(reason="manual"){
+ if(applying)return{changed:0};applying=true;
+ try{
+  const updates={};let changed=0;
+  for(const storageKey of MATCH_KEYS){
+   const source=read(storageKey,[]);if(!Array.isArray(source))continue;let storeChanged=false;
+   const next=source.map(match=>{
+    const rf=rowsField(match);if(!rf)return match;
+    const split=canonicalSplit(match?.split||currentSplit());let matchChanged=false;
+    const rows=rf.rows.map(row=>{
+     const f=teamField(row);if(!f)return row;
+     const target=targetFor(f.name,split);if(!target||teamKey(target)===teamKey(f.name))return row;
+     changed++;storeChanged=true;matchChanged=true;
+     return{...row,[f.key]:target,team_name:target,original_team_name:row.original_team_name||f.name,team_registry_status:"registered",unregistered_team:false,exclude_from_stats:false};
+    });
+    return matchChanged?{...match,[rf.key]:rows}:match;
+   });
+   if(storeChanged)updates[storageKey]=next;
+  }
+  if(changed)writeMany(updates,"team-auto-replace-apply-v1:"+reason);
+  return{changed};
+ }finally{applying=false}
+}
 function allSavedRows(split=currentSplit()){
  const out=[];
- for(const storageKey of MATCH_KEYS){const source=read(storageKey,[]);if(!Array.isArray(source))continue;source.forEach((match,mi)=>{if(!splitMatches(match,split))return;const rf=rowsField(match);if(!rf)return;rf.rows.forEach((row,ri)=>{const field=teamField(row);if(field)out.push({storageKey,row,field,match,rowKey:rf.key,rowIndex:ri,matchIndex:mi})})})}
+ for(const storageKey of MATCH_KEYS){
+  const source=read(storageKey,[]);if(!Array.isArray(source))continue;
+  source.forEach((match,mi)=>{if(!splitMatches(match,split))return;const rf=rowsField(match);if(!rf)return;rf.rows.forEach((row,ri)=>{const field=teamField(row);if(field)out.push({storageKey,row,field,match,rowKey:rf.key,rowIndex:ri,matchIndex:mi})})});
+ }
  return out;
 }
-function computeUnknown(registered,rows){const known=new Set((registered||[]).map(teamKey).filter(Boolean)),map=new Map();for(const x of rows||[]){const name=text(x?.field?.name),k=teamKey(name);if(!k||known.has(k))continue;const r=map.get(k)||{name,count:0,sources:new Set};r.count++;r.sources.add(x.storageKey);map.set(k,r)}return[...map.values()].map(x=>({...x,sources:[...x.sources]})).sort((a,b)=>a.name.localeCompare(b.name,"ja"))}
-function unknownTeams(){return computeUnknown(registeredTeams(),allSavedRows())}
+function computeUnknown(registered,rows){
+ const known=new Set((registered||[]).map(teamKey).filter(Boolean)),map=new Map();
+ for(const x of rows||[]){const name=text(x?.field?.name),k=teamKey(name);if(!k||known.has(k))continue;const r=map.get(k)||{name,count:0,sources:new Set};r.count++;r.sources.add(x.storageKey);map.set(k,r)}
+ return[...map.values()].map(x=>({...x,sources:[...x.sources]})).sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+}
+function unknownTeams(){applyMappings("before-unknown-scan");return computeUnknown(registeredTeams(),allSavedRows())}
 function replaceTeam(oldName,newName){
- oldName=text(oldName);newName=text(newName);if(!newName)return alert("入れ替え先の登録済みチームを選択してください。");
- if(!confirm(`「${oldName}」を「${newName}」へ入れ替えますか？`))return;
- const target=teamKey(oldName),sp=currentSplit(),updates={};let total=0;
- for(const storageKey of MATCH_KEYS){const source=read(storageKey,[]);if(!Array.isArray(source))continue;let keyChanged=false;
-  const next=source.map(match=>{if(!splitMatches(match,sp))return match;const rf=rowsField(match);if(!rf)return match;let changed=false;const rows=rf.rows.map(row=>{const f=teamField(row);if(!f||teamKey(f.name)!==target)return row;changed=true;keyChanged=true;total++;return{...row,[f.key]:newName,team_name:newName,team_registry_status:"registered",unregistered_team:false,exclude_from_stats:false}});return changed?{...match,[rf.key]:rows}:match});
-  if(keyChanged)updates[storageKey]=next;
- }
- if(!total)return alert("登録済みスクリム内の該当チームを確認できませんでした。");
- const aliases=read(ALIAS_KEY,{});aliases[target]=newName;updates[ALIAS_KEY]=aliases;
- if(window.ApexDataCore?.transaction)window.ApexDataCore.transaction(updates,{reason:"registered-scrim-team-swap-v356"});else Object.entries(updates).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
- window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{reason:"registered-scrim-team-swap-v356",keys:Object.keys(updates)}}));
- alert(`${total}行を「${newName}」へ入れ替えました。`);schedule();
+ oldName=text(oldName);newName=text(newName);
+ if(!newName)return alert("入れ替え先の登録済みチームを選択してください。");
+ if(!confirm(`「${oldName}」を「${newName}」へ入れ替え、今後も自動変換しますか？`))return;
+ saveMapping(oldName,newName);
+ const result=applyMappings("manual-confirm");
+ alert(`${result.changed}行を「${newName}」へ入れ替えました。\n今後、同じ未登録名は自動で変換されます。`);
+ schedule();
 }
 const esc=v=>text(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function render(){
+ applyMappings("render");
  const host=document.getElementById("scrimUnregisteredSwapList"),count=document.getElementById("scrimUnregisteredSwapCount");if(!host)return;
  const reg=registeredTeams(),rows=allSavedRows(),u=computeUnknown(reg,rows);if(count)count.textContent=`${u.length}件`;
- host.dataset.audit=`sources:${MATCH_KEYS.join(",")};registered:${reg.length};scrimRows:${rows.length};unknown:${u.length};split:${currentSplit()}`;
+ host.dataset.audit=`autoMap:${Object.keys(readMappings()).length};registered:${reg.length};scrimRows:${rows.length};unknown:${u.length};split:${currentSplit()}`;
  if(!u.length){host.innerHTML='<div class="scrimUnregisteredSwapEmpty">現在のSplitの登録済みスクリムに未登録チームはありません。</div>';return}
  const opts='<option value="">入れ替え先を選択</option>'+reg.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
  host.innerHTML=u.map(x=>`<div class="scrimUnregisteredSwapRow" data-unknown="${esc(x.name)}"><div class="scrimUnregisteredSwapName">${esc(x.name)} <span class="small">(${x.count}行)</span></div><select>${opts}</select><button type="button">入れ替え</button></div>`).join("");
  host.querySelectorAll(".scrimUnregisteredSwapRow").forEach(r=>r.querySelector("button").onclick=()=>replaceTeam(r.dataset.unknown,r.querySelector("select").value));
 }
-function eligibleRows(rows){const known=new Set(registeredTeams().map(teamKey));return(Array.isArray(rows)?rows:[]).filter(r=>{const f=teamField(r);return!f||known.has(teamKey(f.name))})}
-window.TeamRegistrationPolicy={...(window.TeamRegistrationPolicy||{}),registeredTeams,isRegistered:n=>!text(n)||new Set(registeredTeams().map(teamKey)).has(teamKey(n)),eligibleRows};
+function eligibleRows(rows,split=currentSplit()){
+ const known=new Set(registeredTeams(split).map(teamKey));
+ return(Array.isArray(rows)?rows:[]).filter(r=>{const f=teamField(r);return!f||known.has(teamKey(f.name))});
+}
+window.TeamRegistrationPolicy={...(window.TeamRegistrationPolicy||{}),registeredTeams,isRegistered:(n,split=currentSplit())=>!text(n)||new Set(registeredTeams(split).map(teamKey)).has(teamKey(n)),eligibleRows};
 window.parentPhase2CleanRowsV341=eligibleRows;
-window.UnregisteredTeamSwapList={render,replaceTeam,unknownTeams,registeredTeams,allSavedRows,computeUnknown,version:"v356-unified-all-scrim-stores"};
-let timer;function schedule(){clearTimeout(timer);timer=setTimeout(render,80)}
-window.addEventListener("apex:data-applied",schedule);window.addEventListener("storage",e=>{if(!e.key||MATCH_KEYS.includes(e.key)||e.key===TRACKER_KEY)schedule()});window.addEventListener("focus",schedule);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)schedule()});document.addEventListener("click",e=>{if(e.target.closest?.('[data-page="scrimRegister"],#scrimRegisterPanel'))schedule()},true);
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
+window.TeamAutoReplaceV1={version:"v1-new-clean",mapKey:MAP_KEY,readMappings,saveMapping,deleteMapping,applyMappings,replaceTeam,unknownTeams,registeredTeams,allSavedRows};
+let timer;
+function schedule(reason="schedule"){clearTimeout(timer);timer=setTimeout(()=>{applyMappings(reason);render()},100)}
+window.addEventListener("apex:data-applied",e=>{if(e?.detail?.reason?.startsWith?.("team-auto-replace"))return;schedule("data-applied")});
+window.addEventListener("storage",e=>{if(!e.key||MATCH_KEYS.includes(e.key)||e.key===TRACKER_KEY||e.key===MAP_KEY)schedule("storage")});
+window.addEventListener("focus",()=>schedule("focus"));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)schedule("visible")});
+document.addEventListener("click",e=>{const el=e.target.closest?.("button,[role=button]");if(!el)return;const label=text(el.textContent||el.value);if(/保存|登録|追加|更新|入れ替え/.test(label))setTimeout(()=>schedule("after-action"),250)},true);
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>schedule("dom-ready"),{once:true});else schedule("boot");
 })();
 </script>
 <script id="v291-user-management-guard">(()=>{"use strict";function openSecureUserManagement(){const mod=window.ApexSecureLoginV290;mod&&"function"==typeof mod.openAdminPage&&mod.openAdminPage()}function applyGuard(){if(!window.ApexSecureLoginV290)return;window.PermissionRoleV174={...window.PermissionRoleV174||{},openRoleAdmin:openSecureUserManagement},window.UserRoleAdminV172={...window.UserRoleAdminV172||{},show:openSecureUserManagement,render:()=>window.ApexSecureLoginV290.renderAdmin?.()};const panel=document.getElementById("adminUserRole");panel?.classList.contains("active")&&window.ApexSecureLoginV290.openAdminPage()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",applyGuard,{once:!0}):applyGuard(),setTimeout(applyGuard,300)})();</script>
