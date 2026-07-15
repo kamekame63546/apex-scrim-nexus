@@ -1343,6 +1343,16 @@ window.ApexDataCore={read,readJSON,readMany,update,write,transaction,rawSet,rawR
 <div class="masterRow v267MasterRow"><input id="adminNewRegion" placeholder="地域名"/><button onclick="AdminReg.add('region')">登録</button></div>
 <div class="choiceList" id="adminRegionList"></div>
 </section>
+<section class="masterCard teamMigrationCardV1" id="teamMigrationCardV1">
+<div class="masterToolbar"><h2>チーム名移行</h2><span class="masterCount">完全一致</span></div>
+<div class="teamMigrationGridV1">
+<label>旧チーム名<input id="teamMigrationOldV1" autocomplete="off" placeholder="過去データに残っている旧名"/></label>
+<label>新チーム名<select id="teamMigrationNewV1"><option value="">登録チームを選択</option></select></label>
+</div>
+<div class="teamMigrationActionsV1"><button type="button" id="teamMigrationRunV1">このSplitの関連データを移行</button></div>
+<div class="teamMigrationNoteV1">大文字・小文字・空白を含め、旧チーム名と完全一致する項目だけを変更します。既に登録名だけ変更済みでも使用できます。</div>
+<div class="teamMigrationResultV1" id="teamMigrationResultV1"></div>
+</section>
 </div>
 </div>
 <div aria-label="ファイト登録" class="adminPanel fightRecordPanel" id="adminFightRecord">
@@ -1977,9 +1987,9 @@ function applyMappingsToValue(value){const maps=readJson(MAP_KEY,{});if(!maps||t
 const nativeSet=Storage.prototype.setItem;let internal=false;
 Storage.prototype.setItem=function(key,value){if(!internal&&TARGET_KEYS.has(String(key))&&typeof value==="string"&&value.startsWith("[")||(!internal&&TARGET_KEYS.has(String(key))&&typeof value==="string"&&value.startsWith("{"))){try{const parsed=JSON.parse(value);internal=true;value=JSON.stringify(applyMappingsToValue(parsed))}catch(_){}finally{internal=false}}return nativeSet.call(this,key,value)};
 function registeredTeams(split){const st=readJson("apexV62Clean",{});return (Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[]).map(text)}
-function renderCard(){const grid=document.querySelector("#adminRegistration .compactMasterGrid");if(!grid)return;let card=document.getElementById("teamMigrationCardV1");if(!card){card=document.createElement("section");card.id="teamMigrationCardV1";card.className="masterCard teamMigrationCardV1";grid.appendChild(card)}const split=currentSplit(),teams=registeredTeams(split);card.innerHTML=`<div class="masterToolbar"><h2>チーム名移行</h2><span class="masterCount">完全一致</span></div><div class="teamMigrationGridV1"><label>旧チーム名<input id="teamMigrationOldV1" autocomplete="off" placeholder="過去データに残っている旧名"></label><label>新チーム名<select id="teamMigrationNewV1"><option value="">登録チームを選択</option>${teams.map(v=>`<option value="${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}">${v.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</option>`).join("")}</select></label></div><div class="teamMigrationActionsV1"><button type="button" id="teamMigrationRunV1">このSplitの関連データを移行</button></div><div class="teamMigrationNoteV1">大文字・小文字・空白を含め、旧チーム名と完全一致する項目だけを変更します。既に登録名だけ変更済みでも使用できます。</div><div class="teamMigrationResultV1" id="teamMigrationResultV1"></div>`}
+function renderCard(){const card=document.getElementById("teamMigrationCardV1"),select=document.getElementById("teamMigrationNewV1");if(!card||!select)return;const split=currentSplit(),teams=registeredTeams(split),current=select.value;select.innerHTML='<option value="">登録チームを選択</option>'+teams.map(v=>`<option value="${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}">${v.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</option>`).join("");if(current&&teams.includes(current))select.value=current;card.dataset.split=split}
 function bind(){document.addEventListener("click",e=>{if(e.target?.id!=="teamMigrationRunV1")return;e.preventDefault();const split=currentSplit(),oldName=document.getElementById("teamMigrationOldV1")?.value??"",newName=document.getElementById("teamMigrationNewV1")?.value??"";if(!confirm(`対象Split：${split}\n\n「${oldName}」と完全一致する関連データを\n「${newName}」へ移行します。\n\n元の試合データは削除せず、チーム名項目だけを更新します。`))return;const result=document.getElementById("teamMigrationResultV1");try{const d=migrate({split,oldName,newName});if(result)result.textContent=`移行完了：${d.fields+d.keys}件（保存先 ${d.storageKeys}個）`;alert(`チーム名を移行しました。\n\n${oldName} → ${newName}\n更新：${d.fields+d.keys}件`)}catch(error){if(result)result.textContent=`エラー：${error?.message||error}`;alert(`チーム名移行に失敗しました。\n${error?.message||error}`)}},true)}
-function init(){renderCard();bind();const target=document.getElementById("adminRegistration");if(target)new MutationObserver(()=>requestAnimationFrame(renderCard)).observe(target,{childList:true,subtree:true});window.addEventListener("storage",e=>{e.key==="apexV62Clean"&&setTimeout(renderCard,50)})}
+function init(){renderCard();bind();document.addEventListener("click",e=>{const btn=e.target.closest?.('[data-app="admin"][data-page="registration"]');if(btn)setTimeout(renderCard,80)},true);window.addEventListener("storage",e=>{e.key==="apexV62Clean"&&setTimeout(renderCard,50)});setTimeout(renderCard,500);setTimeout(renderCard,1400)}
 window.TeamNameMigrationV1={migrate,applyMappingsToValue,render:renderCard};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
 
