@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="loot-route-image-upload-layout-restored">
+<head><meta name="apex-build" content="loot-route-placement-preserved-image-upload-restored">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1149,6 +1149,20 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 #ownerMenuBlock .pageTab[data-page=userRoleAdmin].permission-disabled{opacity:.38!important;filter:grayscale(.55)!important;cursor:not-allowed!important}
 
 </style>
+<style id="lootImageRegistrationVisibilityFix">
+/* POI配置のJavaScriptは変更せず、画像登録欄の表示だけを明確化 */
+#adminLootRoute .lootAdminGrid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;}
+#adminLootRoute .lootCard{display:block!important;visibility:visible!important;opacity:1!important;overflow:visible!important;}
+#adminLootRoute .lootCard:first-child{order:1!important;border:1px solid rgba(249,115,22,.5)!important;}
+#adminLootRoute .lootCard:nth-child(2){order:2!important;}
+#adminLootRoute .lootCard:nth-child(3){order:3!important;}
+#adminLootRoute .lootUploadGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}
+#adminLootRoute .lootUploadZone{display:grid!important;min-height:190px!important;visibility:visible!important;opacity:1!important;}
+#adminLootRoute #lootMapUploadZone,#adminLootRoute #lootRouteUploadZone{display:grid!important;}
+#adminLootRoute #lootMapChooseBtn,#adminLootRoute #lootRouteChooseBtn{display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+@media(max-width:900px){#adminLootRoute .lootUploadGrid{grid-template-columns:1fr!important;}}
+</style>
+
 <script id="apex-data-core-v335">(()=>{"use strict";
 const native={set:Storage.prototype.setItem,get:Storage.prototype.getItem,remove:Storage.prototype.removeItem};
 const CRITICAL=new Set(["apexV62Clean","apexStatsMatchesV6","apexManualFinalZonesV1","apexRingConsoleTrialsV1","apexMapChoicesV1","apexLandmarksV6","apexScrimsV1","apexPolandScrimsV1","apexFinalZonesV1","apexRingConsoleV1"]);
@@ -1258,51 +1272,6 @@ window.ApexDataCore={read,readJSON,readMany,update,write,transaction,rawSet,rawR
 .lootPlacementStatus.changed{border-color:rgba(249,115,22,.55);color:#fdba74;background:rgba(249,115,22,.08)}
 .lootList{max-height:280px;overflow:auto;border:1px solid #26344f;border-radius:12px;background:#0b1223}.lootList table{width:100%;border-collapse:collapse}.lootList td,.lootList th{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.075);font-size:11px;text-align:center}.lootList th{position:sticky;top:0;background:#121a31;color:#bfd0f3}.lootList button{height:25px;border:0;border-radius:8px;color:#fff;font-weight:900;cursor:pointer;margin:0 2px}
 @media(max-width:720px){.lootUploadZone{grid-template-columns:1fr}.lootMapsGrid{grid-template-columns:1fr}.lootAdminGrid{grid-template-columns:1fr}.lootPlacementBar{grid-template-columns:1fr}.lootModalMeta{gap:8px}.lootModalMeta b{font-size:15px}.lootModalMeta strong{font-size:13px}}
-</style>
-
-<style id="loot-route-upload-layout-restored">
-/* 漁りルート管理：画像登録を常に上段へ表示し、POI配置と分離 */
-#lootRouteAdminPanel .lootAdminGrid{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr)!important;
-  gap:14px!important;
-  align-items:start!important;
-}
-#lootRouteAdminPanel .lootCard{
-  display:block!important;
-  overflow:visible!important;
-}
-#lootRouteAdminPanel .lootCard:first-child{
-  order:1!important;
-}
-#lootRouteAdminPanel .lootCard:nth-child(2){
-  order:2!important;
-}
-#lootRouteAdminPanel .lootUploadZone{
-  display:grid!important;
-  visibility:visible!important;
-  opacity:1!important;
-  min-height:128px!important;
-}
-#lootRouteAdminPanel .lootForm{
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-}
-#lootRouteAdminPanel .lootUploadZone{
-  grid-column:span 2!important;
-}
-#lootRouteAdminPanel .lootPlaceHint,
-#lootRouteAdminPanel .lootFormActions,
-#lootRouteAdminPanel #lootRouteList{
-  width:100%!important;
-}
-@media(max-width:1100px){
-  #lootRouteAdminPanel .lootForm{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-  #lootRouteAdminPanel .lootUploadZone{grid-column:1/-1!important}
-}
-@media(max-width:650px){
-  #lootRouteAdminPanel .lootForm{grid-template-columns:1fr!important}
-  #lootRouteAdminPanel .lootUploadZone{grid-column:1!important;grid-template-columns:1fr!important}
-}
 </style>
 </head>
 <body>
