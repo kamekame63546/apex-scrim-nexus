@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="automated-self-tests-corrected">
+<head><meta name="apex-build" content="team-management-consolidated">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -2111,6 +2111,21 @@ function updateTeamSplit(team,attach){
   if(exists!==attach)throw new Error(`${team}の${attach?"追加":"解除"}後の保存確認に失敗しました。`);
 }
 
+function deleteTeamMaster(name){
+  if(!confirm(`「${name}」をチームマスターと全Splitの登録から削除しますか？\n過去の試合・スクリムデータは削除されません。`))return false;
+  const st=readState();
+  const beforeMaster=st.teamMaster.length;
+  st.teamMaster=st.teamMaster.filter(v=>v!==name);
+  for(const split of Object.keys(st.splitTeams||{})){
+    st.splitTeams[split]=(st.splitTeams[split]||[]).filter(v=>v!==name);
+  }
+  st.teams=[...(st.splitTeams?.[st.current]||[])];
+  writeState(st,"master-list-team-delete");
+  const verify=readState();
+  if(verify.teamMaster.includes(name))throw new Error(`${name}のマスター削除後の保存確認に失敗しました。`);
+  return verify.teamMaster.length===beforeMaster-1;
+}
+
 function renderList(){
   const el=layer(),type=activeType;
   const st=readState();
@@ -2158,9 +2173,9 @@ function renderList(){
         return;
       }
       if(action==="delete"){
-        if(type==="team")window.TeamSplitV243?.deleteMaster?.(value);
+        if(type==="team")deleteTeamMaster(value);
         else window.AdminReg?.requestRemove?.("legend",encodeURIComponent(value));
-        setTimeout(()=>{renderList();enhanceCards()},80);
+        setTimeout(()=>{renderList();enhanceCards();window.HomeApp?.render?.()},80);
       }
     }catch(error){
       console.error("master-list action failed",error);
@@ -2192,7 +2207,17 @@ window.addEventListener("storage",e=>{if([KEY,"apexIntegratedOwnTeam","apexDispl
 wrapRender(window.AdminReg,"render");
 wrapRender(window.SplitMasterManager,"render");
 
-window.MasterDataListV231={open:openList,close:closeList,render:renderList,enhance:enhanceCards,run,teamValues};
+window.MasterDataListV231={
+  open:openList,
+  close:closeList,
+  render:renderList,
+  enhance:enhanceCards,
+  run,
+  teamValues,
+  setSplitTeam:updateTeamSplit,
+  deleteMaster:deleteTeamMaster,
+  readState
+};
 }();</script>
 <script id="v233-split-block-own-team-script">!function(){"use strict";const TRACKER_KEY="apexV62Clean",TARGET="Year6 Split2 PL",esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),norm=s=>String(s??"").normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase(),isTarget=s=>norm(s)===norm(TARGET),uniqObjects=arr=>{const seen=new Set;return(Array.isArray(arr)?arr:[]).filter(v=>{let k;try{k=JSON.stringify(v)}catch(_){k=String(v)}return!seen.has(k)&&(seen.add(k),!0)})};function read(key,fb){try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fb))}catch(_){return fb}}function write(key,v){localStorage.setItem(key,JSON.stringify(v))}function replaceSplitRefs(x){if("string"==typeof x)return isTarget(x)?TARGET:x;if(Array.isArray(x))return x.map(replaceSplitRefs);if(!x||"object"!=typeof x)return x;const out={};for(const[k,v]of Object.entries(x)){const nk=isTarget(k)?TARGET:k,nv=replaceSplitRefs(v);Object.prototype.hasOwnProperty.call(out,nk)&&Array.isArray(out[nk])&&Array.isArray(nv)?out[nk]=uniqObjects([...out[nk],...nv]):Object.prototype.hasOwnProperty.call(out,nk)&&out[nk]&&nv&&"object"==typeof out[nk]&&"object"==typeof nv&&!Array.isArray(out[nk])&&!Array.isArray(nv)?out[nk]={...out[nk],...nv}:out[nk]=nv}return out}function blockLabel(v){const raw=String(v??"").trim();if(!raw)return raw;const m=raw.replace(/\s+/g,"").match(/^(?:block|ブロック)?[-_]?([0-9]+(?:\.[0-9]+)?)$/i);return m?`Block${m[1]}`:raw.replace(/\bblock\b/gi,"Block")}function applyBlockDisplay(root){if(!root)return;const walker=(root.ownerDocument||document).createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];for(;walker.nextNode();)nodes.push(walker.currentNode);nodes.forEach(n=>{const p=n.parentElement;if(!p||["SCRIPT","STYLE","TEXTAREA","CODE","PRE"].includes(p.tagName))return;const next=n.nodeValue.replace(/\bblock(?=\s*\d)/gi,"Block").replace(/\bblock\b/gi,"Block");next!==n.nodeValue&&(n.nodeValue=next)}),root.querySelectorAll?.("input,select,option").forEach(el=>{if("OPTION"===el.tagName)el.textContent=blockLabel(el.textContent),/block|ブロック/i.test(el.value)&&(el.value=blockLabel(el.value));else if(/block/i.test(el.id||"")||/block/i.test(el.name||"")){const apply=()=>{el.value=blockLabel(el.value)};el.dataset.v233Block||(el.addEventListener("change",apply),el.addEventListener("blur",apply),el.dataset.v233Block="1"),apply()}})}function getOrderedSplits(st){const keys=Object.keys(st.splits||{}),order=Array.isArray(st.splitOrder)?st.splitOrder:[];return[...order.filter(v=>keys.includes(v)),...keys.filter(v=>!order.includes(v))]}function moveSplit(name,delta){const order=getOrderedSplits(read(TRACKER_KEY,{})),i=order.indexOf(name),j=i+delta;if(!(i<0||j<0||j>=order.length)){[order[i],order[j]]=[order[j],order[i]],function(order){const st=read(TRACKER_KEY,{});st.splitOrder=order.filter(v=>st.splits?.[v]);const reordered={};st.splitOrder.forEach(v=>{reordered[v]=st.splits[v]}),Object.keys(st.splits||{}).forEach(v=>{v in reordered||(reordered[v]=st.splits[v])}),st.splits=reordered,write(TRACKER_KEY,st)}(order);try{AdminReg.render()}catch(_){}try{IntegratedApp.refreshGlobalSplit?.()}catch(_){}decorateSplits()}}function decorateSplits(){const host=document.getElementById("adminSplitList");if(!host)return;const order=getOrderedSplits(read(TRACKER_KEY,{}));[...host.querySelectorAll(".pill")].forEach(p=>{const removeBtn=[...p.querySelectorAll("button")].find(b=>/AdminReg\.requestRemove\('split'/.test(b.getAttribute("onclick")||"")),hit=(removeBtn?.getAttribute("onclick")||"").match(/requestRemove\('split','([^']+)'\)/);let name="";try{name=hit?decodeURIComponent(hit[1]):""}catch(_){}if(!name)return;p.querySelectorAll(".splitMoveV233").forEach(b=>b.remove());const i=order.indexOf(name);if(i<0)return;const up=document.createElement("button"),down=document.createElement("button");up.type=down.type="button",up.className=down.className="splitMoveV233 actionBtn action-sub",up.textContent="↑",down.textContent="↓",up.title="上へ移動",down.title="下へ移動",up.disabled=0===i,down.disabled=i===order.length-1,up.addEventListener("click",e=>{e.preventDefault(),e.stopPropagation(),moveSplit(name,-1)}),down.addEventListener("click",e=>{e.preventDefault(),e.stopPropagation(),moveSplit(name,1)}),p.insertBefore(up,removeBtn||null),p.insertBefore(down,removeBtn||null)})}function run(){!function(){const st=read(TRACKER_KEY,{});if(!st||"object"!=typeof st)return;st.splits=st.splits&&"object"==typeof st.splits?st.splits:{};const matches=Object.keys(st.splits).filter(isTarget);matches.length&&(st.splits[TARGET]=uniqObjects(matches.flatMap(k=>Array.isArray(st.splits[k])?st.splits[k]:[])),matches.forEach(k=>{k!==TARGET&&delete st.splits[k]}));for(const key of["splitTeams","splitMaps"]){const obj=st[key];if(!obj||"object"!=typeof obj)continue;const ks=Object.keys(obj).filter(isTarget);ks.length&&(obj[TARGET]=[...new Set(ks.flatMap(k=>Array.isArray(obj[k])?obj[k]:[]).map(String))],ks.forEach(k=>{k!==TARGET&&delete obj[k]}))}isTarget(st.current)&&(st.current=TARGET),st.splitOrder=Array.isArray(st.splitOrder)?[...new Set(st.splitOrder.map(v=>isTarget(v)?TARGET:v).filter(v=>st.splits[v]))]:[],Object.keys(st.splits).forEach(v=>{st.splitOrder.includes(v)||st.splitOrder.push(v)}),write(TRACKER_KEY,st);for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!key||key===TRACKER_KEY)continue;const raw=localStorage.getItem(key);if(raw&&(raw.includes("Year6")||raw.includes("Split2")))try{const next=replaceSplitRefs(JSON.parse(raw));localStorage.setItem(key,JSON.stringify(next))}catch(_){}}}(),function(){const walk=x=>{if(Array.isArray(x))return x.forEach((v,i)=>{x[i]=walk(v)}),x;if(x&&"object"==typeof x){for(const k of Object.keys(x))"block"===k.toLowerCase()&&"string"==typeof x[k]?x[k]=blockLabel(x[k]):x[k]=walk(x[k]);return x}return x};for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i),raw=key&&localStorage.getItem(key);if(key&&raw)try{const data=JSON.parse(raw),before=JSON.stringify(data),next=walk(data);JSON.stringify(next)!==before&&localStorage.setItem(key,JSON.stringify(next))}catch(_){}}}(),applyBlockDisplay(document.body),document.querySelectorAll("iframe").forEach(f=>{try{applyBlockDisplay(f.contentDocument?.body)}catch(_){}}),decorateSplits(),function(){const sel=document.getElementById("adminOwnTeamSelect");if(!sel)return;const cur=localStorage.getItem("apexIntegratedOwnTeam")||"",teams=function(){const st=window.SplitMasterManager?.ensure?.()||read(TRACKER_KEY,{});return[...new Set((st.teamMaster||[]).map(String).map(v=>v.trim()).filter(Boolean))].sort((a,b)=>(window.DisplayAliasV229?.alias?.("team",a)||a).localeCompare(window.DisplayAliasV229?.alias?.("team",b)||b,"ja",{numeric:!0,sensitivity:"base"}))}();sel.innerHTML='<option value="">自チームを選択</option>'+teams.map(v=>`<option value="${esc(v)}" ${v===cur?"selected":""}>${esc(window.DisplayAliasV229?.alias?.("team",v)||v)}</option>`).join("");const help=document.querySelector(".ownTeamHelpV231");help&&(help.textContent="全ての登録チームから自チームを選択できます。現在のSplitで未使用のチームも選択可能です。");const count=document.getElementById("adminOwnTeamCount");count&&(count.textContent=cur?window.DisplayAliasV229?.alias?.("team",cur)||cur:"未選択")}()}window.SplitOrderV233={move:moveSplit,decorate:decorateSplits,run:run},document.addEventListener("DOMContentLoaded",()=>{run(),setTimeout(run,400),setTimeout(run,1100)},{once:!0}),window.addEventListener("storage",e=>{[TRACKER_KEY,"apexIntegratedOwnTeam","apexDisplayAliasesV1"].includes(e.key)&&setTimeout(run,30)})}();</script>
 
@@ -2334,46 +2359,22 @@ function init(){renderCard();bind();document.addEventListener("click",e=>{const 
 window.TeamNameMigrationV1={migrate,applyMappingsToValue,render:renderCard};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
 
-<script id="v243-master-data-fix">!function(){"use strict";
-const KEY="apexV62Clean",esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const uniq=a=>{const out=[],seen=new Set;for(const raw of Array.isArray(a)?a:[]){const v=String(raw||"").normalize("NFKC").trim().replace(/\s+/g," ");if(!v)continue;const key=v.toLocaleLowerCase();if(seen.has(key))continue;seen.add(key);out.push(v)}return out};
-function read(){try{return JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(_){return{}}}
-function write(st){localStorage.setItem(KEY,JSON.stringify(st));window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:JSON.stringify(st)}))}
-function refresh(){try{window.SplitMasterManager?.render?.()}catch(_){}try{window.IntegratedApp?.refreshGlobalSplit?.()}catch(_){}try{window.HomeApp?.render?.()}catch(_){}try{window.IntegratedApp?.highlightOwnTeamAll?.()}catch(_){}}
-function splitNames(st){return Object.keys(st.splits||{})}
-function getCard(){return[...document.querySelectorAll("#adminRegistration .masterCard")].find(c=>/^(チーム|Team)登録$/.test((c.querySelector("h2")?.textContent||"").trim()))}
-function state(){const st=read();st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"?st.splitTeams:{};st.teamMaster=uniq(st.teamMaster||[]);const names=splitNames(st);st.current=st.current&&st.splits?.[st.current]?st.current:names[0];for(const sp of names)if(!Array.isArray(st.splitTeams[sp]))st.splitTeams[sp]=[];return st}
-function renderTeamCard(){
- const card=getCard();if(!card)return;
- const st=state(),cur=st.current;if(!cur)return;
- const used=uniq(st.splitTeams[cur]||[]),usedKeys=new Set(used.map(v=>v.toLocaleLowerCase()));
- const master=uniq(st.teamMaster||[]).sort((a,b)=>a.localeCompare(b,"ja",{numeric:true,sensitivity:"base"}));
- const splits=splitNames(st),sig=JSON.stringify({cur,used,master,splits});if(card.dataset.teamCardSignature===sig&&card.querySelector("#teamMasterListV337"))return;
- card.dataset.teamCardSignature=sig;card.classList.add("splitScopedMasterCard");
- card.innerHTML=`
- <div class="masterToolbar"><h2>チーム登録</h2><span class="masterCount">${used.length}件使用中／全${master.length}件</span></div>
- <label class="splitScopeSelect">Split<select id="teamSplitSelectV337">${splits.map(x=>`<option value="${esc(x)}" ${x===cur?"selected":""}>${esc(x)}</option>`).join("")}</select></label>
- <div class="masterRow"><input id="teamNewV337" placeholder="新しいチーム名"><button type="button" id="teamAddV337" class="actionBtn action-save">登録</button></div>
- <div class="splitScopeTitle">登録データリスト</div>
- <div class="teamSplitListV243" id="teamMasterListV337">${master.length?master.map(v=>{
-   const on=usedKeys.has(v.toLocaleLowerCase());
-   return `<div class="teamSplitRowV243" data-team="${encodeURIComponent(v)}"><span class="teamNameV243">${esc(v)}</span><button type="button" class="toggleV337 actionBtn ${on?"action-remove":"action-add"}" data-on="${on?"1":"0"}">${on?"外す":"追加"}</button><button type="button" class="renameV337 actionBtn action-edit">編集</button><button type="button" class="deleteMasterV337 actionBtn action-delete">削除</button></div>`
- }).join(""):'<span class="empty">未登録</span>'}</div>`;
-}
-function commit(st){st.teamMaster=uniq(st.teamMaster||[]);for(const sp of Object.keys(st.splitTeams||{}))st.splitTeams[sp]=uniq(st.splitTeams[sp]);st.teams=[...(st.splitTeams[st.current]||[])];write(st);refresh();renderTeamCard()}
-function addTeam(){const input=document.getElementById("teamNewV337"),value=String(input?.value||"").normalize("NFKC").trim().replace(/\s+/g," ");if(!value)return;const st=state(),cur=st.current;st.teamMaster=uniq([...st.teamMaster,value]);st.splitTeams[cur]=uniq([...(st.splitTeams[cur]||[]),value]);if(input)input.value="";commit(st)}
-function toggleTeam(name,on){const st=state(),cur=st.current,arr=uniq(st.splitTeams[cur]||[]);st.splitTeams[cur]=on?uniq([...arr,name]):arr.filter(v=>v!==name);commit(st)}
-function renameTeam(oldName){const next=prompt("チームマスターの名称を変更",oldName);if(next===null)return;const value=String(next).normalize("NFKC").trim().replace(/\s+/g," ");if(!value||value===oldName)return;const st=state();if(st.teamMaster.some(v=>v!==oldName&&v.toLocaleLowerCase()===value.toLocaleLowerCase()))return alert("同じチーム名が既に登録されています。");st.teamMaster=st.teamMaster.map(v=>v===oldName?value:v);for(const sp of Object.keys(st.splitTeams))st.splitTeams[sp]=uniq(st.splitTeams[sp].map(v=>v===oldName?value:v));commit(st)}
-function deleteMaster(name){if(!confirm(`「${name}」をチームマスターと全Splitの登録から削除しますか？\n過去の試合データは削除されません。`))return;const st=state();st.teamMaster=st.teamMaster.filter(v=>v!==name);for(const sp of Object.keys(st.splitTeams))st.splitTeams[sp]=st.splitTeams[sp].filter(v=>v!==name);commit(st)}
-function bind(){
- document.addEventListener("change",e=>{if(e.target?.id!=="teamSplitSelectV337")return;const value=e.target.value,st=state();if(!st.splits?.[value])return;st.current=value;st.teams=[...(st.splitTeams[value]||[])];write(st);try{window.IntegratedApp?.changeGlobalSplit?.(value)}catch(_){}setTimeout(renderTeamCard,0)},true);
- document.addEventListener("keydown",e=>{if(e.target?.id==="teamNewV337"&&e.key==="Enter"){e.preventDefault();addTeam()}},true);
- document.addEventListener("click",e=>{const btn=e.target?.closest?.("#adminRegistration .masterCard button");if(!btn)return;if(btn.id==="teamAddV337"){e.preventDefault();e.stopPropagation();return addTeam()}const row=btn.closest(".teamSplitRowV243");if(!row)return;const name=decodeURIComponent(row.dataset.team||"");if(!name)return;e.preventDefault();e.stopPropagation();if(btn.classList.contains("toggleV337"))return toggleTeam(name,btn.dataset.on!=="1");if(btn.classList.contains("renameV337"))return renameTeam(name);if(btn.classList.contains("deleteMasterV337"))return deleteMaster(name)},true)
-}
-function init(){bind();setTimeout(renderTeamCard,350);setTimeout(renderTeamCard,1000)}
-window.TeamSplitV243={render:renderTeamCard,add:addTeam,toggle:toggleTeam,rename:renameTeam,deleteMaster,run:renderTeamCard};
-document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init,{once:true}):init();
-}();</script>
+<script id="v243-master-data-fix">(()=>{"use strict";
+/*
+  Compatibility facade:
+  チームの読込・保存・追加・外す・削除は MasterDataListV231 に集約済み。
+  旧コードから TeamSplitV243 が呼ばれても、同じ正式処理へ転送する。
+*/
+function api(){return window.MasterDataListV231}
+function refresh(){api()?.enhance?.();api()?.render?.()}
+window.TeamSplitV243={
+  render:refresh,
+  run:refresh,
+  toggle(name,on){return api()?.setSplitTeam?.(name,on)},
+  deleteMaster(name){return api()?.deleteMaster?.(name)},
+  current(){return api()?.readState?.()?.current||""}
+};
+})();</script>
 <script id="sidebarStateV261">(()=>{"use strict";const PAGE_KEYS={tracker:"apexIntegratedTrackerPage",scrim:"apexIntegratedScrimPage"},DEFAULTS={tracker:"analysis",scrim:"analysisPage"},validPages={tracker:new Set(["analysis"]),scrim:new Set(["analysisPage","teamDetailPage","dashboardPage"])};function selectedPage(app){const key=PAGE_KEYS[app];let page=key?localStorage.getItem(key):"";return validPages[app]?.has(page)||(page=DEFAULTS[app]||""),page}function setActive(app,page){document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(btn=>btn.classList.remove("active"));const target=document.querySelector(`.sideMenu [data-app="${CSS.escape(app)}"][data-page="${CSS.escape(page||"")}"]`);target&&target.classList.add("active")}function sync(){return document.getElementById("adminZoneRegister")?.classList.contains("active")?setActive("admin","zoneRegister"):document.getElementById("adminRingConsole")?.classList.contains("active")?setActive("admin","ringConsoleAdmin"):document.getElementById("adminFightRecord")?.classList.contains("active")?setActive("admin","fightRecord"):document.getElementById("adminScrimRegister")?.classList.contains("active")?setActive("admin","scrimRegister"):document.getElementById("adminRegistration")?.classList.contains("active")?setActive("admin","registration"):document.getElementById("adminSystemDiagnostics")?.classList.contains("active")?setActive("admin","systemDiagnostics"):document.getElementById("adminUserRole")?.classList.contains("active")?setActive("admin","userRoleAdmin"):document.getElementById("zoneOverviewPanel")?.classList.contains("active")?setActive("zone","overview"):document.getElementById("ringConsolePanel")?.classList.contains("active")?setActive("ringConsole","overview"):document.getElementById("homePanel")?.classList.contains("active")?setActive("home","home"):document.getElementById("frameTracker")?.classList.contains("active")?setActive("tracker",selectedPage("tracker")):document.getElementById("frameScrim")?.classList.contains("active")?setActive("scrim",selectedPage("scrim")):void 0}function init(){!function(){const legacyTracker=localStorage.getItem("apexTrackerPage"),legacyScrim=localStorage.getItem("apexScrimPage");!localStorage.getItem(PAGE_KEYS.tracker)&&validPages.tracker.has(legacyTracker)&&localStorage.setItem(PAGE_KEYS.tracker,legacyTracker),!localStorage.getItem(PAGE_KEYS.scrim)&&validPages.scrim.has(legacyScrim)&&localStorage.setItem(PAGE_KEYS.scrim,legacyScrim),localStorage.removeItem("apexTrackerPage"),localStorage.removeItem("apexScrimPage")}(),document.querySelectorAll(".sideMenu [data-app][data-page]").forEach(btn=>{btn.addEventListener("click",()=>{const app=btn.dataset.app,page=btn.dataset.page;PAGE_KEYS[app]&&validPages[app]?.has(page)&&localStorage.setItem(PAGE_KEYS[app],page),requestAnimationFrame(sync)})}),sync()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",init,{once:!0}):init(),window.SidebarStateV261={sync:sync,setActive:setActive,selectedPage:selectedPage}})();</script>
 \n\n
 
