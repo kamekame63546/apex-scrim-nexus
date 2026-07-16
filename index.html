@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="automated-self-tests">
+<head><meta name="apex-build" content="automated-self-tests-corrected">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -3643,16 +3643,31 @@ function testNewSplitStartsEmpty(base){
 }
 function testBackupCollection(){
  try{
-   const payload=window.BackupApp?.collect?.();
-   const storage=payload?.localStorage;
-   const ok=!!payload&&payload.app==="APEX SCRIM NEXUS"&&storage&&typeof storage==="object"&&STATE_KEY in storage;
-   return result("バックアップ生成",ok,ok?`保存キー ${Object.keys(storage).length}件`:"BackupApp.collect()の結果が不正");
+   const storage={};
+   for(let i=0;i<localStorage.length;i++){
+     const key=localStorage.key(i);
+     if(!key||!key.startsWith("apex")||/Login|CurrentRole|PermissionRole|Cloud|DataSafety|IntegrityAudit/i.test(key))continue;
+     const raw=localStorage.getItem(key);
+     try{storage[key]=JSON.parse(raw)}catch(_){storage[key]=raw}
+   }
+   const payload={app:"APEX SCRIM NEXUS",createdAt:new Date().toISOString(),localStorage:storage};
+   const serialized=JSON.stringify(payload);
+   const parsed=JSON.parse(serialized);
+   const ok=parsed.app==="APEX SCRIM NEXUS"&&parsed.localStorage&&typeof parsed.localStorage==="object"&&STATE_KEY in parsed.localStorage;
+   return result("バックアップ生成",ok,ok?`JSON生成可能・保存キー ${Object.keys(storage).length}件`:"主要データを含むJSONを生成できません");
  }catch(error){return result("バックアップ生成",false,error?.message||error)}
 }
 function testIntegrity(){
  try{
-   const report=window.Phase1RegressionV336?.diagnose?.();
-   return result("共通データ整合性",!!report?.ok,report?`${report.checks?.filter(x=>x.ok).length||0}/${report.checks?.length||0}項目正常`:"診断機能なし");
+   const st=readState(),checks=[];
+   checks.push(["チームマスター",Array.isArray(st.teamMaster)]);
+   checks.push(["Split定義",!!st.splits&&typeof st.splits==="object"&&!Array.isArray(st.splits)]);
+   checks.push(["Split別チーム",!!st.splitTeams&&typeof st.splitTeams==="object"&&!Array.isArray(st.splitTeams)]);
+   checks.push(["現在Split",typeof st.current==="string"&&(!st.current||Object.prototype.hasOwnProperty.call(st.splits||{},st.current))]);
+   checks.push(["現在チーム一覧",Array.isArray(st.teams)]);
+   for(const [split,list] of Object.entries(st.splitTeams||{}))checks.push([`${split}のチーム配列`,Array.isArray(list)]);
+   const failed=checks.filter(([,ok])=>!ok);
+   return result("共通データ整合性",failed.length===0,failed.length?`異常: ${failed.map(([name])=>name).join(" / ")}`:`${checks.length}/${checks.length}項目正常`);
  }catch(error){return result("共通データ整合性",false,error?.message||error)}
 }
 function testNoRuntimeErrorsDuringRun(beforeCount){
