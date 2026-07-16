@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="scrim-audit-tests-expanded">
+<head><meta name="apex-build" content="loot-route-audit-tests">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1545,6 +1545,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard"><h3>登録データ件数</h3><div class="v339DiagRows" id="v340DataCounts"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>スクリム総点検</h3><div class="v339DiagRows" id="v342ScrimAuditSummary"></div><div class="v339DiagList" id="v342ScrimAudit"></div></section>
 <section class="v339DiagCard"><h3>漁りルート登録状況</h3><div class="v339DiagList" id="v340LootCoverage"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><h3>漁りルート総点検</h3><div class="v339DiagRows" id="v343LootAuditSummary"></div><div class="v339DiagList" id="v343LootAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><button type="button" class="actionBtn action-refresh" id="v341RunTests">テスト実行</button></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
 </div>
@@ -3492,6 +3493,65 @@ function lootCoverage(){
    };
  });
 }
+function lootAudit(){
+ const routes=readJson("apexLootRoutesV1",{});
+ const positions=readJson("apexLootRoutePositionsV1",{});
+ const order=asArray(readJson("apexLootRouteMapOrderV1",[])).map(clean).filter(Boolean);
+ const stateData=state();
+ const current=stateData.current||"";
+ const currentMaps=asArray(stateData.splitMaps?.[current]||readJson("apexMapChoicesV1",[])).map(clean).filter(Boolean);
+ const mapImages=routes?.__mapImages&&typeof routes.__mapImages==="object"?routes.__mapImages:{};
+ const issues={
+   invalidRoute:[],
+   invalidTime:[],
+   missingPosition:[],
+   duplicateOrder:[],
+   unknownOrderMap:[],
+   missingMapImage:[]
+ };
+ const routeRows=[];
+ for(const [key,value] of Object.entries(routes||{})){
+   if(key==="__mapImages")continue;
+   if(!value||typeof value!=="object"){
+     issues.invalidRoute.push(key);
+     continue;
+   }
+   const parts=key.split("||");
+   const map=clean(value.map||parts[0]),poi=clean(value.poi||parts[1]);
+   const phase=clean(value.phase),minute=Number(value.minute),second=Number(value.second);
+   const hasImage=Boolean(value.imageId||value.image);
+   routeRows.push({key,map,poi,phase,minute,second,hasImage});
+   if(!map||!poi||!hasImage)issues.invalidRoute.push(key);
+   if(!["第1収縮前","第1収縮"].includes(phase)||!Number.isInteger(minute)||minute<0||!Number.isInteger(second)||second<0||second>59){
+     issues.invalidTime.push(`${map||"-"} / ${poi||"-"} / ${phase||"未設定"} ${Number.isFinite(minute)?minute:"-"}:${Number.isFinite(second)?String(second).padStart(2,"0"):"-"}`);
+   }
+   const mapPos=positions?.[map]&&typeof positions[map]==="object"?positions[map]:{};
+   if(map&&poi&&!mapPos[poi])issues.missingPosition.push(`${map} / ${poi}`);
+ }
+ const orderSeen=new Set();
+ for(const map of order){
+   const k=norm(map);
+   if(orderSeen.has(k))issues.duplicateOrder.push(map);
+   orderSeen.add(k);
+   if(currentMaps.length&&!currentMaps.some(v=>norm(v)===k))issues.unknownOrderMap.push(map);
+ }
+ for(const map of currentMaps){
+   if(!mapImages[map])issues.missingMapImage.push(map);
+ }
+ const positioned=Object.values(positions||{}).reduce((n,value)=>n+(value&&typeof value==="object"?Object.keys(value).length:0),0);
+ const issueTotal=Object.values(issues).reduce((n,list)=>n+list.length,0);
+ return {
+   currentSplit:current,
+   currentMaps,
+   mapOrder:order,
+   mapImages:Object.keys(mapImages),
+   routeCount:routeRows.length,
+   positioned,
+   issues,
+   issueTotal,
+   ok:issueTotal===0
+ };
+}
 function recentChanges(){
  const items=[];
  const add=(time,type,detail)=>{
@@ -3585,6 +3645,34 @@ async function render(){
      }).join("")
    : '<div class="v339DiagEmpty">漁りルートまたはPOI配置データがありません</div>';
 
+ const lootReport=lootAudit();
+ const lootSummary=document.getElementById("v343LootAuditSummary");
+ const lootBox=document.getElementById("v343LootAudit");
+ if(lootSummary&&lootBox){
+   lootSummary.innerHTML=[
+     row("対象Split",lootReport.currentSplit||"不明"),
+     row("Split登録MAP",`${lootReport.currentMaps.length}件`),
+     row("MAP画像参照",`${lootReport.mapImages.length}件`),
+     row("POI配置",`${lootReport.positioned}件`),
+     row("ルート登録",`${lootReport.routeCount}件`),
+     row("異常候補",`${lootReport.issueTotal}件`,lootReport.issueTotal?"Warn":"Ok")
+   ].join("");
+   const labels={
+     invalidRoute:"ルートデータ不正",
+     invalidTime:"出発時間不正",
+     missingPosition:"POI配置なし",
+     duplicateOrder:"MAP順序重複",
+     unknownOrderMap:"現在Split外のMAP順序",
+     missingMapImage:"MAP画像未登録"
+   };
+   const cards=[];
+   for(const [key,list] of Object.entries(lootReport.issues)){
+     if(!list.length)continue;
+     cards.push(`<div class="v339DiagItem"><strong>${esc(labels[key]||key)}：${list.length}件</strong><br>${esc(list.slice(0,10).join(" / "))}${list.length>10?`<br>ほか${list.length-10}件`:""}</div>`);
+   }
+   lootBox.innerHTML=cards.length?cards.join(""):'<div class="v339DiagEmpty">漁りルートの構造上の異常候補はありません</div>';
+ }
+
  const changes=recentChanges();
  const changeBox=document.getElementById("v340RecentChanges");
  changeBox.innerHTML=changes.length
@@ -3634,7 +3722,7 @@ function open(){
  document.querySelectorAll(".pageTab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page==="systemDiagnostics"));
  render();
 }
-window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,recentChanges};
+window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,lootAudit,recentChanges};
 })();</script>
 
 <script id="v341-automated-self-tests">(()=>{"use strict";
@@ -3724,6 +3812,60 @@ function testScrimSplitIsolation(){
    return result("スクリムSplit紐付け",bad.length===0,`Split未設定 ${bad.length}件`);
  }catch(error){return result("スクリムSplit紐付け",false,error?.message||error)}
 }
+function testLootStructure(){
+ try{
+   const report=window.SystemDiagnosticsV339?.lootAudit?.();
+   if(!report)return result("漁りルート構造",false,"診断APIを取得できません");
+   const bad=report.issues?.invalidRoute?.length||0;
+   return result("漁りルート構造",bad===0,`ルート${report.routeCount}件・不正${bad}件`);
+ }catch(error){return result("漁りルート構造",false,error?.message||error)}
+}
+function testLootTimeValues(){
+ try{
+   const report=window.SystemDiagnosticsV339?.lootAudit?.();
+   const bad=report?.issues?.invalidTime?.length??-1;
+   return result("漁りルート出発時間",bad===0,bad<0?"診断不可":`不正${bad}件`);
+ }catch(error){return result("漁りルート出発時間",false,error?.message||error)}
+}
+function testLootMapOrder(){
+ try{
+   const report=window.SystemDiagnosticsV339?.lootAudit?.();
+   if(!report)return result("漁りルートMAP順序",false,"診断APIを取得できません");
+   const duplicates=report.issues?.duplicateOrder?.length||0;
+   const unknown=report.issues?.unknownOrderMap?.length||0;
+   const ok=duplicates===0&&unknown===0;
+   return result("漁りルートMAP順序",ok,`${report.mapOrder.length}件・重複${duplicates}件・Split外${unknown}件`);
+ }catch(error){return result("漁りルートMAP順序",false,error?.message||error)}
+}
+function testLootUiApi(){
+ const api=window.LootRouteApp;
+ const names=["show","showAdmin","leave","openRoute","closeModal","saveRoute","savePlacement"];
+ const missing=names.filter(name=>typeof api?.[name]!=="function");
+ return result("漁りルート画面処理",missing.length===0,missing.length?`不足: ${missing.join(" / ")}`:`${names.length}処理あり`);
+}
+function testLootIndexedDb(){
+ return new Promise(resolve=>{
+   if(!("indexedDB" in window))return resolve(result("漁りルートIndexedDB",false,"ブラウザ未対応"));
+   try{
+     const req=indexedDB.open("apexLootRouteImagesV1");
+     let finished=false;
+     const done=(ok,detail)=>{
+       if(finished)return;
+       finished=true;
+       try{req.result?.close?.()}catch(_){}
+       resolve(result("漁りルートIndexedDB",ok,detail));
+     };
+     req.onsuccess=()=>{
+       const db=req.result;
+       const hasStore=db.objectStoreNames.contains("images");
+       done(hasStore,hasStore?"imagesストア接続可能":"imagesストアなし");
+     };
+     req.onerror=()=>done(false,req.error?.name||"接続エラー");
+     req.onblocked=()=>done(false,"ブロック中");
+     setTimeout(()=>done(false,"応答なし"),2500);
+   }catch(error){done(false,error?.message||error)}
+ });
+}
 function testNoRuntimeErrorsDuringRun(beforeCount){
  const errors=(()=>{try{return JSON.parse(localStorage.getItem("apexRuntimeErrorsV285")||"[]")}catch(_){return[]}})();
  const added=Math.max(0,errors.length-beforeCount);
@@ -3748,7 +3890,12 @@ async function run(){
    testIntegrity(),
    testScrimDiagnostic(),
    testScrimCrudFunctions(),
-   testScrimSplitIsolation()
+   testScrimSplitIsolation(),
+   testLootStructure(),
+   testLootTimeValues(),
+   testLootMapOrder(),
+   testLootUiApi(),
+   await testLootIndexedDb()
  ];
  await new Promise(resolve=>setTimeout(resolve,30));
  results.push(testNoRuntimeErrorsDuringRun(errorBefore));
