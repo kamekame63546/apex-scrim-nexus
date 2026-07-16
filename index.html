@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="master-list-buttons-own-team-fixed">
+<head><meta name="apex-build" content="read-only-system-diagnostics">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -495,6 +495,31 @@ body.perm-viewer [onclick*="登録"],body.perm-viewer [onclick*=Add],body.perm-v
 .v292StatusActive,.v292StatusSuspended{display:inline-flex;align-items:center;justify-content:center;min-width:84px;height:24px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:950}
 .v292StatusActive{color:#bbf7d0;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.35)}
 .v292StatusSuspended{color:#fecaca;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35)}
+
+#adminSystemDiagnostics{background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)!important;padding:14px!important}
+.v339DiagHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.v339DiagHeader h2{margin:0;font-size:22px;letter-spacing:.03em}
+.v339DiagHeaderActions{display:flex;gap:8px;align-items:center}
+.v339DiagUpdated{color:#94a5c4;font-size:11px;font-weight:850}
+.v339DiagGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.v339DiagCard{border:1px solid #26344f;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));box-shadow:0 12px 28px rgba(0,0,0,.24);padding:13px;min-width:0}
+.v339DiagCardWide{grid-column:1/-1}
+.v339DiagCard h3{margin:0 0 10px;font-size:15px;color:#edf3ff;letter-spacing:.025em}
+.v339DiagRows{display:grid;gap:7px}
+.v339DiagRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:#0d1426;padding:8px 10px}
+.v339DiagRow span{color:#b8c6e4;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis}
+.v339DiagRow b{font-size:12px;color:#edf3ff;white-space:nowrap}
+.v339DiagOk{color:#86efac!important}
+.v339DiagWarn{color:#fde68a!important}
+.v339DiagBad{color:#fca5a5!important}
+.v339DiagList{display:grid;gap:7px;max-height:260px;overflow:auto;padding-right:2px}
+.v339DiagItem{border:1px solid rgba(255,255,255,.07);border-radius:10px;background:#0d1426;padding:8px 10px;color:#cbd8f5;font-size:11px;font-weight:800;line-height:1.55;word-break:break-word}
+.v339DiagItem strong{color:#fdba74}
+.v339DiagEmpty{border:1px dashed rgba(255,255,255,.14);border-radius:10px;padding:13px;color:#94a5c4;text-align:center;font-size:12px;font-weight:850}
+.v339DiagNote{margin-top:10px;color:#94a5c4;font-size:11px;font-weight:800;line-height:1.6}
+body:not(.v293-admin-role) #adminSystemDiagnostics{display:none!important}
+@media(max-width:900px){.v339DiagGrid{grid-template-columns:1fr}.v339DiagCardWide{grid-column:auto}.v339DiagHeader{align-items:flex-start;flex-direction:column}}
+
 #adminSystemManagement{background:radial-gradient(circle at 10% 0,#18234a 0,#080d1a 42%,#050812 100%)!important;padding:14px!important}
 .v293SystemGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:1050px;margin:0 auto}
 .v293SystemCard{border:1px solid #26344f;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));box-shadow:0 14px 34px rgba(0,0,0,.28);padding:18px;text-align:center}
@@ -1266,6 +1291,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="pageTabs" id="tabsOwner">
 <button class="pageTab" data-app="admin" data-page="userRoleAdmin" onclick="window.LootRouteApp?.leave?.();PermissionRoleV174.openRoleAdmin()">権限管理</button>
 <button class="pageTab" data-app="admin" data-page="systemManagement" onclick="window.LootRouteApp?.leave?.();SystemManagementV293.open()">システム管理</button>
+<button class="pageTab" data-app="admin" data-page="systemDiagnostics" onclick="window.LootRouteApp?.leave?.();SystemDiagnosticsV339.open()">システム診断</button>
 </div>
 </div>
 </aside>
@@ -1497,6 +1523,20 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="v293SystemStatus">管理者専用</div>
 </section>
 </div>
+</div>
+<div aria-label="システム診断" class="adminPanel fightRecordPanel" id="adminSystemDiagnostics">
+<div class="v339DiagHeader">
+<div><h2>システム診断</h2><div class="v339DiagUpdated" id="v339DiagUpdated">未確認</div></div>
+<div class="v339DiagHeaderActions"><button class="actionBtn action-refresh" onclick="SystemDiagnosticsV339.render()" type="button">再診断</button></div>
+</div>
+<div class="v339DiagGrid">
+<section class="v339DiagCard"><h3>保存状態</h3><div class="v339DiagRows" id="v339StorageStatus"></div></section>
+<section class="v339DiagCard"><h3>主要件数</h3><div class="v339DiagRows" id="v339PrimaryCounts"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><h3>Split別チーム件数</h3><div class="v339DiagRows" id="v339SplitCounts"></div></section>
+<section class="v339DiagCard"><h3>チーム異常候補</h3><div class="v339DiagList" id="v339TeamIssues"></div></section>
+<section class="v339DiagCard"><h3>直近のJavaScriptエラー</h3><div class="v339DiagList" id="v339RuntimeErrors"></div></section>
+</div>
+<div class="v339DiagNote">この画面は読み取り専用です。診断を実行しても登録済みデータは変更されません。</div>
 </div>
 <div aria-label="スクリム登録" class="adminPanel polandPanel scrimRegisterPanel" id="adminScrimRegister">
 <div class="polandHead"><h2>スクリム登録</h2></div>
@@ -2323,7 +2363,7 @@ function init(){bind();setTimeout(renderTeamCard,350);setTimeout(renderTeamCard,
 window.TeamSplitV243={render:renderTeamCard,add:addTeam,toggle:toggleTeam,rename:renameTeam,deleteMaster,run:renderTeamCard};
 document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init,{once:true}):init();
 }();</script>
-<script id="sidebarStateV261">(()=>{"use strict";const PAGE_KEYS={tracker:"apexIntegratedTrackerPage",scrim:"apexIntegratedScrimPage"},DEFAULTS={tracker:"analysis",scrim:"analysisPage"},validPages={tracker:new Set(["analysis"]),scrim:new Set(["analysisPage","teamDetailPage","dashboardPage"])};function selectedPage(app){const key=PAGE_KEYS[app];let page=key?localStorage.getItem(key):"";return validPages[app]?.has(page)||(page=DEFAULTS[app]||""),page}function setActive(app,page){document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(btn=>btn.classList.remove("active"));const target=document.querySelector(`.sideMenu [data-app="${CSS.escape(app)}"][data-page="${CSS.escape(page||"")}"]`);target&&target.classList.add("active")}function sync(){return document.getElementById("adminZoneRegister")?.classList.contains("active")?setActive("admin","zoneRegister"):document.getElementById("adminRingConsole")?.classList.contains("active")?setActive("admin","ringConsoleAdmin"):document.getElementById("adminFightRecord")?.classList.contains("active")?setActive("admin","fightRecord"):document.getElementById("adminScrimRegister")?.classList.contains("active")?setActive("admin","scrimRegister"):document.getElementById("adminRegistration")?.classList.contains("active")?setActive("admin","registration"):document.getElementById("adminUserRole")?.classList.contains("active")?setActive("admin","userRoleAdmin"):document.getElementById("zoneOverviewPanel")?.classList.contains("active")?setActive("zone","overview"):document.getElementById("ringConsolePanel")?.classList.contains("active")?setActive("ringConsole","overview"):document.getElementById("homePanel")?.classList.contains("active")?setActive("home","home"):document.getElementById("frameTracker")?.classList.contains("active")?setActive("tracker",selectedPage("tracker")):document.getElementById("frameScrim")?.classList.contains("active")?setActive("scrim",selectedPage("scrim")):void 0}function init(){!function(){const legacyTracker=localStorage.getItem("apexTrackerPage"),legacyScrim=localStorage.getItem("apexScrimPage");!localStorage.getItem(PAGE_KEYS.tracker)&&validPages.tracker.has(legacyTracker)&&localStorage.setItem(PAGE_KEYS.tracker,legacyTracker),!localStorage.getItem(PAGE_KEYS.scrim)&&validPages.scrim.has(legacyScrim)&&localStorage.setItem(PAGE_KEYS.scrim,legacyScrim),localStorage.removeItem("apexTrackerPage"),localStorage.removeItem("apexScrimPage")}(),document.querySelectorAll(".sideMenu [data-app][data-page]").forEach(btn=>{btn.addEventListener("click",()=>{const app=btn.dataset.app,page=btn.dataset.page;PAGE_KEYS[app]&&validPages[app]?.has(page)&&localStorage.setItem(PAGE_KEYS[app],page),requestAnimationFrame(sync)})}),sync()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",init,{once:!0}):init(),window.SidebarStateV261={sync:sync,setActive:setActive,selectedPage:selectedPage}})();</script>
+<script id="sidebarStateV261">(()=>{"use strict";const PAGE_KEYS={tracker:"apexIntegratedTrackerPage",scrim:"apexIntegratedScrimPage"},DEFAULTS={tracker:"analysis",scrim:"analysisPage"},validPages={tracker:new Set(["analysis"]),scrim:new Set(["analysisPage","teamDetailPage","dashboardPage"])};function selectedPage(app){const key=PAGE_KEYS[app];let page=key?localStorage.getItem(key):"";return validPages[app]?.has(page)||(page=DEFAULTS[app]||""),page}function setActive(app,page){document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(btn=>btn.classList.remove("active"));const target=document.querySelector(`.sideMenu [data-app="${CSS.escape(app)}"][data-page="${CSS.escape(page||"")}"]`);target&&target.classList.add("active")}function sync(){return document.getElementById("adminZoneRegister")?.classList.contains("active")?setActive("admin","zoneRegister"):document.getElementById("adminRingConsole")?.classList.contains("active")?setActive("admin","ringConsoleAdmin"):document.getElementById("adminFightRecord")?.classList.contains("active")?setActive("admin","fightRecord"):document.getElementById("adminScrimRegister")?.classList.contains("active")?setActive("admin","scrimRegister"):document.getElementById("adminRegistration")?.classList.contains("active")?setActive("admin","registration"):document.getElementById("adminSystemDiagnostics")?.classList.contains("active")?setActive("admin","systemDiagnostics"):document.getElementById("adminUserRole")?.classList.contains("active")?setActive("admin","userRoleAdmin"):document.getElementById("zoneOverviewPanel")?.classList.contains("active")?setActive("zone","overview"):document.getElementById("ringConsolePanel")?.classList.contains("active")?setActive("ringConsole","overview"):document.getElementById("homePanel")?.classList.contains("active")?setActive("home","home"):document.getElementById("frameTracker")?.classList.contains("active")?setActive("tracker",selectedPage("tracker")):document.getElementById("frameScrim")?.classList.contains("active")?setActive("scrim",selectedPage("scrim")):void 0}function init(){!function(){const legacyTracker=localStorage.getItem("apexTrackerPage"),legacyScrim=localStorage.getItem("apexScrimPage");!localStorage.getItem(PAGE_KEYS.tracker)&&validPages.tracker.has(legacyTracker)&&localStorage.setItem(PAGE_KEYS.tracker,legacyTracker),!localStorage.getItem(PAGE_KEYS.scrim)&&validPages.scrim.has(legacyScrim)&&localStorage.setItem(PAGE_KEYS.scrim,legacyScrim),localStorage.removeItem("apexTrackerPage"),localStorage.removeItem("apexScrimPage")}(),document.querySelectorAll(".sideMenu [data-app][data-page]").forEach(btn=>{btn.addEventListener("click",()=>{const app=btn.dataset.app,page=btn.dataset.page;PAGE_KEYS[app]&&validPages[app]?.has(page)&&localStorage.setItem(PAGE_KEYS[app],page),requestAnimationFrame(sync)})}),sync()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",init,{once:!0}):init(),window.SidebarStateV261={sync:sync,setActive:setActive,selectedPage:selectedPage}})();</script>
 \n\n
 
 
@@ -3317,6 +3357,132 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 })();
 </script>
 <script id="v291-user-management-guard">(()=>{"use strict";function openSecureUserManagement(){const mod=window.ApexSecureLoginV290;mod&&"function"==typeof mod.openAdminPage&&mod.openAdminPage()}function applyGuard(){if(!window.ApexSecureLoginV290)return;window.PermissionRoleV174={...window.PermissionRoleV174||{},openRoleAdmin:openSecureUserManagement},window.UserRoleAdminV172={...window.UserRoleAdminV172||{},show:openSecureUserManagement,render:()=>window.ApexSecureLoginV290.renderAdmin?.()};const panel=document.getElementById("adminUserRole");panel?.classList.contains("active")&&window.ApexSecureLoginV290.openAdminPage()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",applyGuard,{once:!0}):applyGuard(),setTimeout(applyGuard,300)})();</script>
+<script id="v339-system-diagnostics">(()=>{"use strict";
+const STATE_KEY="apexV62Clean",ERROR_KEY="apexRuntimeErrorsV285",IMAGE_DB="apexLootRouteImagesV1";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clean=v=>String(v??"").normalize("NFKC").trim().replace(/\s+/g," ");
+const norm=v=>clean(v).toLocaleLowerCase();
+
+function readJson(key,fallback){
+ try{
+   const raw=localStorage.getItem(key);
+   return raw==null?fallback:JSON.parse(raw);
+ }catch(_){return fallback}
+}
+function state(){
+ const st=readJson(STATE_KEY,{});
+ st.teamMaster=Array.isArray(st.teamMaster)?st.teamMaster:[];
+ st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"&&!Array.isArray(st.splitTeams)?st.splitTeams:{};
+ st.splits=st.splits&&typeof st.splits==="object"&&!Array.isArray(st.splits)?st.splits:{};
+ return st;
+}
+function row(label,value,status=""){
+ return `<div class="v339DiagRow"><span>${esc(label)}</span><b class="${status?`v339Diag${status}`:""}">${esc(value)}</b></div>`;
+}
+function exactDuplicates(values){
+ const seen=new Map,dups=[];
+ for(const raw of Array.isArray(values)?values:[]){
+   const v=clean(raw),k=norm(v);
+   if(!v)continue;
+   if(seen.has(k)&&seen.get(k)!==v)dups.push([seen.get(k),v]);
+   else if(seen.has(k)&&!dups.some(x=>x[0]===v&&x[1]===v))dups.push([v,v]);
+   else seen.set(k,v);
+ }
+ return dups;
+}
+function teamIssues(st){
+ const master=st.teamMaster.map(clean).filter(Boolean);
+ const masterKeys=new Set(master.map(norm));
+ const issues=[];
+ for(const pair of exactDuplicates(master))issues.push({type:"チームマスター重複",detail:`${pair[0]} / ${pair[1]}`});
+ for(const [split,listRaw] of Object.entries(st.splitTeams)){
+   const list=Array.isArray(listRaw)?listRaw.map(clean).filter(Boolean):[];
+   for(const pair of exactDuplicates(list))issues.push({type:`${split} 内の重複`,detail:`${pair[0]} / ${pair[1]}`});
+   for(const name of list)if(!masterKeys.has(norm(name)))issues.push({type:`${split} のマスター未登録`,detail:name});
+ }
+ return issues;
+}
+function storageProbe(){
+ try{
+   const key="__apex_diag_probe__",value=String(Date.now());
+   localStorage.setItem(key,value);
+   const ok=localStorage.getItem(key)===value;
+   localStorage.removeItem(key);
+   return ok;
+ }catch(_){return false}
+}
+function indexedDbProbe(){
+ return new Promise(resolve=>{
+   if(!("indexedDB" in window))return resolve({ok:false,label:"未対応"});
+   try{
+     const req=indexedDB.open(IMAGE_DB);
+     let settled=false;
+     const finish=(ok,label)=>{if(settled)return;settled=true;try{req.result?.close?.()}catch(_){}resolve({ok,label})};
+     req.onsuccess=()=>finish(true,"正常");
+     req.onerror=()=>finish(false,req.error?.name||"接続エラー");
+     req.onblocked=()=>finish(false,"ブロック中");
+     setTimeout(()=>finish(false,"応答なし"),2500);
+   }catch(error){resolve({ok:false,label:error?.name||"接続エラー"})}
+ });
+}
+async function render(){
+ const st=state(),master=st.teamMaster.map(clean).filter(Boolean);
+ const splitNames=[...new Set([...Object.keys(st.splits),...Object.keys(st.splitTeams)])];
+ const ownCandidates=master.length;
+ const own=localStorage.getItem("apexIntegratedOwnTeam")||"";
+ const errors=readJson(ERROR_KEY,[]);
+ const issues=teamIssues(st);
+ const storageOk=storageProbe();
+ const idb=await indexedDbProbe();
+ const backupDefined=typeof window.BackupApp==="object"&&typeof window.BackupApp.openGuide==="function";
+ const cloudConfigured=!!(localStorage.getItem("apexCloudConfigV169")||localStorage.getItem("apexSupabaseConfigV169"));
+
+ document.getElementById("v339StorageStatus").innerHTML=[
+   row("localStorage",storageOk?"正常":"異常",storageOk?"Ok":"Bad"),
+   row("IndexedDB",idb.label,idb.ok?"Ok":"Bad"),
+   row("バックアップ機能",backupDefined?"利用可能":"未定義",backupDefined?"Ok":"Bad"),
+   row("クラウド設定",cloudConfigured?"設定あり":"未設定",cloudConfigured?"Ok":"Warn")
+ ].join("");
+
+ document.getElementById("v339PrimaryCounts").innerHTML=[
+   row("チームマスター",`${master.length}件`,master.length===56?"Ok":"Warn"),
+   row("自チーム候補",`${ownCandidates}件`,ownCandidates===master.length?"Ok":"Bad"),
+   row("現在の自チーム",own||"未選択",own?"Ok":"Warn"),
+   row("Split数",`${splitNames.length}件`,splitNames.length?"Ok":"Warn"),
+   row("保存キー数",`${localStorage.length}件`,"")
+ ].join("");
+
+ document.getElementById("v339SplitCounts").innerHTML=splitNames.length
+   ? splitNames.map(split=>{
+       const count=Array.isArray(st.splitTeams[split])?st.splitTeams[split].length:0;
+       return row(split,`${count}件`,count>32?"Bad":count===32?"Warn":"");
+     }).join("")
+   : row("Split","0件","Warn");
+
+ const issueBox=document.getElementById("v339TeamIssues");
+ issueBox.innerHTML=issues.length
+   ? issues.map(x=>`<div class="v339DiagItem"><strong>${esc(x.type)}</strong><br>${esc(x.detail)}</div>`).join("")
+   : '<div class="v339DiagEmpty">異常候補はありません</div>';
+
+ const errorBox=document.getElementById("v339RuntimeErrors");
+ const recent=Array.isArray(errors)?errors.slice(-8).reverse():[];
+ errorBox.innerHTML=recent.length
+   ? recent.map(e=>`<div class="v339DiagItem"><strong>${esc(e.time||"時刻不明")}</strong><br>${esc(e.message||e.type||"不明なエラー")}<br>${esc(e.detail||"")}</div>`).join("")
+   : '<div class="v339DiagEmpty">記録されたエラーはありません</div>';
+
+ const updated=document.getElementById("v339DiagUpdated");
+ if(updated)updated.textContent=`最終診断：${new Date().toLocaleString("ja-JP")}`;
+}
+function open(){
+ document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active"));
+ document.querySelector(".stage")?.classList.add("admin-mode");
+ document.getElementById("adminSystemDiagnostics")?.classList.add("active");
+ document.querySelectorAll(".pageTab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page==="systemDiagnostics"));
+ render();
+}
+window.SystemDiagnosticsV339={open,render,teamIssues};
+})();</script>
+
 <script id="v293-system-management-script">(()=>{"use strict";function isAdmin(){try{if(window.AppRolesV196?.isAdmin)return!!window.AppRolesV196.isAdmin()}catch(_){}return"admin"===(localStorage.getItem("apexCurrentRoleV174")||localStorage.getItem("apexCurrentRoleV171")||localStorage.getItem("apexPermissionRole")||"")}function syncAdminClass(){document.body.classList.toggle("v293-admin-role",isAdmin())}function boot(){syncAdminClass();const previousApply=window.AppRolesV196?.applyPermissions;if(window.AppRolesV196&&"function"==typeof previousApply&&!previousApply.__v293Wrapped){const wrapped=function(...args){const result=previousApply.apply(this,args);return syncAdminClass(),result};wrapped.__v293Wrapped=!0,window.AppRolesV196.applyPermissions=wrapped}}window.SystemManagementV293={open:function(){syncAdminClass(),isAdmin()&&(document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active")),document.querySelector(".stage")?.classList.add("admin-mode"),document.getElementById("adminSystemManagement")?.classList.add("active"),document.querySelectorAll(".pageTab").forEach(btn=>{btn.classList.toggle("active","systemManagement"===btn.dataset.page)}))},syncAdminClass:syncAdminClass},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),setTimeout(syncAdminClass,300)})();</script>
 
 <script id="v303-poi-id-master-marker">localStorage.setItem("apexPoiIdMasterVersion","v303");</script>
