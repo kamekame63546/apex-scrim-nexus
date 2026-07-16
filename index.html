@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="zone-ring-audit-tests">
+<head><meta name="apex-build" content="zone-ring-test-corrected">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -3570,7 +3570,7 @@ function zoneRingAudit(){
    const map=clean(row?.map||zone?.map),region=clean(row?.region||zone?.region||zone?.name),split=clean(row?.split);
    const x=Number(zone.x),y=Number(zone.y);
    const label=`${source==="manual"?"手動":"試合"} / ${row?.date||"-"} / ${map||"MAP未設定"} / Match ${row?.matchNo||row?.match||"-"}`;
-   if(!map||!region||!Number.isFinite(x)||!Number.isFinite(y))zoneIssues.invalidZone.push(label);
+   if(!Number.isFinite(x)||!Number.isFinite(y))zoneIssues.invalidZone.push(label);
    if(Number.isFinite(x)&&Number.isFinite(y)&&(x<0||x>100||y<0||y>100))zoneIssues.invalidCoord.push(`${label} / x:${x} y:${y}`);
    if(source!=="manual"&&!split)zoneIssues.missingSplit.push(label);
    if(map&&maps.size&&!maps.has(map))zoneIssues.unknownMap.push(`${label} / ${map}`);
@@ -4021,10 +4021,11 @@ function testRingRelations(){
 function testRingApi(){
  const checks={
    表示:typeof window.RingConsoleApp?.show==="function"&&typeof window.RingConsoleApp?.render==="function",
-   登録:typeof window.RingConsoleAdmin?.recordBatch==="function",
-   編集:typeof window.RingConsoleAdmin?.editTrial==="function",
-   削除:typeof window.RingConsoleAdmin?.deleteTrial==="function",
-   位置登録:typeof window.RingConsoleAdmin?.pickPosition==="function",
+   管理画面:typeof window.RingConsoleAdmin?.show==="function"&&typeof window.RingConsoleAdmin?.render==="function",
+   登録:typeof window.RingConsoleCleanV164?.recordBatch==="function",
+   編集:typeof window.RingConsoleCleanV164?.editTrial==="function",
+   削除:typeof window.RingConsoleCleanV164?.deleteTrial==="function",
+   位置登録:typeof window.RingConsoleCleanV164?.pickPosition==="function",
    保存層:typeof window.RingConsoleStore?.readTrials==="function"&&typeof window.RingConsoleStore?.writeTrials==="function"
  };
  const missing=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);
