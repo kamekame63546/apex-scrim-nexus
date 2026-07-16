@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="analysis-audit-tests">
+<head><meta name="apex-build" content="debug-monitor-quick-full-tests">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -523,6 +523,10 @@ body.perm-viewer [onclick*="登録"],body.perm-viewer [onclick*=Add],body.perm-v
 .v341TestPass{border-color:rgba(34,197,94,.35)!important;color:#86efac!important}
 .v341TestFail{border-color:rgba(239,68,68,.4)!important;color:#fca5a5!important}
 .v341TestRunning{border-color:rgba(59,130,246,.4)!important;color:#bfdbfe!important}
+.v346TestButtons{display:flex;gap:8px;flex-wrap:wrap}
+#v346DebugStats{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:700px){#v346DebugStats{grid-template-columns:1fr}.v346TestButtons{width:100%}.v346TestButtons button{flex:1}}
+
 
 body:not(.v293-admin-role) #adminSystemDiagnostics{display:none!important}
 @media(max-width:900px){.v339DiagGrid{grid-template-columns:1fr}.v339DiagCardWide{grid-column:auto}.v339DiagHeader{align-items:flex-start;flex-direction:column}}
@@ -1550,7 +1554,8 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard v339DiagCardWide"><h3>リングコンソール総点検</h3><div class="v339DiagRows" id="v344RingAuditSummary"></div><div class="v339DiagList" id="v344RingAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>ランキング・チーム分析・メタ分析総点検</h3><div class="v339DiagRows" id="v345AnalysisAuditSummary"></div><div class="v339DiagList" id="v345AnalysisAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
-<section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><button type="button" class="actionBtn action-refresh" id="v341RunTests">テスト実行</button></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
+<section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><div class="v346TestButtons"><button type="button" class="actionBtn action-add" id="v346RunQuickTests">クイックテスト</button><button type="button" class="actionBtn action-refresh" id="v341RunTests">フルテスト</button></div></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
+<section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>デバッグモード</h3><button type="button" class="actionBtn action-refresh" id="v346ResetDebugCounters">カウンターリセット</button></div><div class="v339DiagRows" id="v346DebugStats"></div><div class="v339DiagList" id="v346DebugErrors"></div><div class="v339DiagNote">管理者専用の読み取り表示です。登録データは変更しません。</div></section>
 </div>
 <div class="v339DiagNote">この画面は読み取り専用です。診断を実行しても登録済みデータは変更されません。</div>
 </div>
@@ -3368,6 +3373,71 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 })();
 </script>
 <script id="v291-user-management-guard">(()=>{"use strict";function openSecureUserManagement(){const mod=window.ApexSecureLoginV290;mod&&"function"==typeof mod.openAdminPage&&mod.openAdminPage()}function applyGuard(){if(!window.ApexSecureLoginV290)return;window.PermissionRoleV174={...window.PermissionRoleV174||{},openRoleAdmin:openSecureUserManagement},window.UserRoleAdminV172={...window.UserRoleAdminV172||{},show:openSecureUserManagement,render:()=>window.ApexSecureLoginV290.renderAdmin?.()};const panel=document.getElementById("adminUserRole");panel?.classList.contains("active")&&window.ApexSecureLoginV290.openAdminPage()}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",applyGuard,{once:!0}):applyGuard(),setTimeout(applyGuard,300)})();</script>
+<script id="v346-debug-monitor">(()=>{"use strict";
+const startedAt=performance.now();
+const stats={storageReads:0,storageWrites:0,renders:0,events:0,lastError:"なし",lastErrorAt:"",lastAction:"起動"};
+const nativeGet=Storage.prototype.getItem;
+const nativeSet=Storage.prototype.setItem;
+const nativeRemove=Storage.prototype.removeItem;
+if(!Storage.prototype.__v346Wrapped){
+  Storage.prototype.getItem=function(){stats.storageReads++;return nativeGet.apply(this,arguments)};
+  Storage.prototype.setItem=function(){stats.storageWrites++;return nativeSet.apply(this,arguments)};
+  Storage.prototype.removeItem=function(){stats.storageWrites++;return nativeRemove.apply(this,arguments)};
+  Storage.prototype.__v346Wrapped=true;
+}
+window.addEventListener("error",e=>{
+  stats.lastError=e?.message||"不明なエラー";
+  stats.lastErrorAt=new Date().toLocaleString("ja-JP");
+},{capture:true});
+window.addEventListener("unhandledrejection",e=>{
+  stats.lastError=String(e?.reason?.message||e?.reason||"Promiseエラー");
+  stats.lastErrorAt=new Date().toLocaleString("ja-JP");
+},{capture:true});
+
+function markRender(name="render"){stats.renders++;stats.lastAction=name}
+function markEvent(name="event"){stats.events++;stats.lastAction=name}
+
+function hookObject(obj,names,prefix){
+  if(!obj)return;
+  for(const name of names){
+    const fn=obj[name];
+    if(typeof fn!=="function"||fn.__v346Wrapped)continue;
+    const wrapped=function(){markRender(`${prefix}.${name}`);return fn.apply(this,arguments)};
+    wrapped.__v346Wrapped=true;
+    obj[name]=wrapped;
+  }
+}
+function installHooks(){
+  hookObject(window.HomeApp,["render"],"HomeApp");
+  hookObject(window.MasterDataListV231,["render","enhance","run"],"MasterDataList");
+  hookObject(window.SystemDiagnosticsV339,["render","open"],"Diagnostics");
+  hookObject(window.ScrimAnalysisV342,["aggregate","poiRanking","teamDetail"],"Analysis");
+}
+setTimeout(installHooks,500);
+setTimeout(installHooks,1500);
+
+document.addEventListener("click",()=>markEvent("click"),true);
+document.addEventListener("change",()=>markEvent("change"),true);
+
+function snapshot(){
+  return {
+    storageReads:stats.storageReads,
+    storageWrites:stats.storageWrites,
+    renders:stats.renders,
+    events:stats.events,
+    lastError:stats.lastError,
+    lastErrorAt:stats.lastErrorAt,
+    lastAction:stats.lastAction,
+    uptimeSeconds:Math.floor((performance.now()-startedAt)/1000)
+  };
+}
+function reset(){
+  stats.storageReads=0;stats.storageWrites=0;stats.renders=0;stats.events=0;
+  stats.lastError="なし";stats.lastErrorAt="";stats.lastAction="リセット";
+}
+window.DebugMonitorV346={snapshot,reset,markRender,markEvent,installHooks};
+})();</script>
+
 <script id="v339-system-diagnostics">(()=>{"use strict";
 const STATE_KEY="apexV62Clean",ERROR_KEY="apexRuntimeErrorsV285",IMAGE_DB="apexLootRouteImagesV1";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -3906,6 +3976,29 @@ async function render(){
    }
  }
 
+
+ const debug=window.DebugMonitorV346?.snapshot?.();
+ const debugStats=document.getElementById("v346DebugStats");
+ const debugErrors=document.getElementById("v346DebugErrors");
+ if(debug&&debugStats&&debugErrors){
+   debugStats.innerHTML=[
+     row("Storage Read",`${debug.storageReads}回`),
+     row("Storage Write",`${debug.storageWrites}回`),
+     row("Render",`${debug.renders}回`),
+     row("Event",`${debug.events}回`),
+     row("起動後",`${debug.uptimeSeconds}秒`),
+     row("最後の処理",debug.lastAction||"-")
+   ].join("");
+   debugErrors.innerHTML=debug.lastError==="なし"
+     ? '<div class="v339DiagEmpty">新しいエラーはありません</div>'
+     : `<div class="v339DiagItem"><strong>${esc(debug.lastErrorAt||"時刻不明")}</strong><br>${esc(debug.lastError)}</div>`;
+ }
+ const resetBtn=document.getElementById("v346ResetDebugCounters");
+ if(resetBtn&&!resetBtn.dataset.bound){
+   resetBtn.dataset.bound="1";
+   resetBtn.onclick=()=>{window.DebugMonitorV346?.reset?.();render()};
+ }
+
  const updated=document.getElementById("v339DiagUpdated");
  if(updated)updated.textContent=`最終診断：${new Date().toLocaleString("ja-JP")}`;
  endRenderCache();
@@ -4168,7 +4261,7 @@ function testNoRuntimeErrorsDuringRun(beforeCount){
  const added=Math.max(0,errors.length-beforeCount);
  return result("テスト実行中の新規JavaScriptエラー",added===0,added===0?"0件":`${added}件`);
 }
-async function run(){
+async function runFull(){
  const btn=document.getElementById("v341RunTests"),summary=document.getElementById("v341TestSummary"),box=document.getElementById("v341TestResults");
  if(!summary||!box)return null;
  if(btn)btn.disabled=true;
@@ -4222,14 +4315,40 @@ async function run(){
  if(btn)btn.disabled=false;
  return {passed,total:results.length,results};
 }
+
+async function runQuick(){
+ const summary=document.getElementById("v341TestSummary"),box=document.getElementById("v341TestResults");
+ if(!summary||!box)return null;
+ summary.className="v341TestSummary v341TestRunning";
+ summary.textContent="クイックテスト実行中…";
+ const base=readState();
+ const checks=[
+   testMasterCandidates(base),
+   testSplitAddRemove(base),
+   testNewSplitStartsEmpty(base),
+   testScrimDiagnostic(),
+   testLootStructure(),
+   testFinalZoneStructure(),
+   testRingTrialStructure(),
+   testAnalysisApi()
+ ];
+ const passed=checks.filter(x=>x.ok).length,failed=checks.length-passed;
+ summary.className=`v341TestSummary ${failed?"v341TestFail":"v341TestPass"}`;
+ summary.textContent=`クイック ${passed}/${checks.length} PASS${failed?`・${failed} FAIL`:"・全項目正常"}`;
+ box.innerHTML=checks.map(x=>`<div class="v339DiagItem"><strong class="${x.ok?"v339DiagOk":"v339DiagBad"}">${x.ok?"PASS":"FAIL"}　${String(x.name).replace(/[&<>]/g,"")}</strong><br>${String(x.detail).replace(/[&<>]/g,"")}</div>`).join("");
+ return {passed,total:checks.length,results:checks};
+}
+
 function bind(){
  const btn=document.getElementById("v341RunTests");
- if(btn&&!btn.dataset.bound){btn.dataset.bound="1";btn.addEventListener("click",run)}
+ if(btn&&!btn.dataset.bound){btn.dataset.bound="1";btn.addEventListener("click",runFull)}
+ const quick=document.getElementById("v346RunQuickTests");
+ if(quick&&!quick.dataset.bound){quick.dataset.bound="1";quick.addEventListener("click",runQuick)}
 }
 document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,500),{once:true});
 const originalOpen=window.SystemDiagnosticsV339?.open;
 if(typeof originalOpen==="function")window.SystemDiagnosticsV339.open=function(){const r=originalOpen.apply(this,arguments);setTimeout(bind,0);return r};
-window.AutomatedSelfTestsV341={run};
+window.AutomatedSelfTestsV341={run:runFull,runFull,runQuick};
 })();</script>
 
 <script id="v293-system-management-script">(()=>{"use strict";function isAdmin(){try{if(window.AppRolesV196?.isAdmin)return!!window.AppRolesV196.isAdmin()}catch(_){}return"admin"===(localStorage.getItem("apexCurrentRoleV174")||localStorage.getItem("apexCurrentRoleV171")||localStorage.getItem("apexPermissionRole")||"")}function syncAdminClass(){document.body.classList.toggle("v293-admin-role",isAdmin())}function boot(){syncAdminClass();const previousApply=window.AppRolesV196?.applyPermissions;if(window.AppRolesV196&&"function"==typeof previousApply&&!previousApply.__v293Wrapped){const wrapped=function(...args){const result=previousApply.apply(this,args);return syncAdminClass(),result};wrapped.__v293Wrapped=!0,window.AppRolesV196.applyPermissions=wrapped}}window.SystemManagementV293={open:function(){syncAdminClass(),isAdmin()&&(document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active")),document.querySelector(".stage")?.classList.add("admin-mode"),document.getElementById("adminSystemManagement")?.classList.add("active"),document.querySelectorAll(".pageTab").forEach(btn=>{btn.classList.toggle("active","systemManagement"===btn.dataset.page)}))},syncAdminClass:syncAdminClass},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),setTimeout(syncAdminClass,300)})();</script>
