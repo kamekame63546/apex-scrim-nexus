@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="read-only-system-diagnostics">
+<head><meta name="apex-build" content="system-diagnostics-complete">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1535,6 +1535,9 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard v339DiagCardWide"><h3>Split別チーム件数</h3><div class="v339DiagRows" id="v339SplitCounts"></div></section>
 <section class="v339DiagCard"><h3>チーム異常候補</h3><div class="v339DiagList" id="v339TeamIssues"></div></section>
 <section class="v339DiagCard"><h3>直近のJavaScriptエラー</h3><div class="v339DiagList" id="v339RuntimeErrors"></div></section>
+<section class="v339DiagCard"><h3>登録データ件数</h3><div class="v339DiagRows" id="v340DataCounts"></div></section>
+<section class="v339DiagCard"><h3>漁りルート登録状況</h3><div class="v339DiagList" id="v340LootCoverage"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
 </div>
 <div class="v339DiagNote">この画面は読み取り専用です。診断を実行しても登録済みデータは変更されません。</div>
 </div>
@@ -3369,6 +3372,8 @@ function readJson(key,fallback){
    return raw==null?fallback:JSON.parse(raw);
  }catch(_){return fallback}
 }
+function asArray(value){return Array.isArray(value)?value:[]}
+function objectSize(value){return value&&typeof value==="object"&&!Array.isArray(value)?Object.keys(value).length:0}
 function state(){
  const st=readJson(STATE_KEY,{});
  st.teamMaster=Array.isArray(st.teamMaster)?st.teamMaster:[];
@@ -3425,6 +3430,84 @@ function indexedDbProbe(){
    }catch(error){resolve({ok:false,label:error?.name||"接続エラー"})}
  });
 }
+function countFightData(st){
+ let matches=0,fights=0;
+ for(const records of Object.values(st.splits||{})){
+   if(!Array.isArray(records))continue;
+   matches+=records.length;
+   for(const record of records)fights+=asArray(record?.fights).length;
+ }
+ return {matches,fights};
+}
+function dataCounts(st){
+ const fight=countFightData(st);
+ const stats=asArray(readJson("apexStatsMatchesV6",[]));
+ const scrims=asArray(readJson("apexScrimsV1",[]));
+ const poland=asArray(readJson("apexPolandScrimsV1",[]));
+ const finalZones=asArray(readJson("apexFinalZonesV1",[]));
+ const manualZones=asArray(readJson("apexManualFinalZonesV1",[]));
+ const ringTrials=asArray(readJson("apexRingConsoleTrialsV1",[]));
+ const routes=readJson("apexLootRoutesV1",{});
+ const routeCount=Object.entries(routes||{}).filter(([key,value])=>key!=="__mapImages"&&value&&typeof value==="object").length;
+ return {
+   fightMatches:fight.matches,
+   fights:fight.fights,
+   statsMatches:stats.length,
+   scrims:scrims.length,
+   poland:poland.length,
+   finalZones:finalZones.length+manualZones.length,
+   ringTrials:ringTrials.length,
+   lootRoutes:routeCount
+ };
+}
+function lootCoverage(){
+ const routes=readJson("apexLootRoutesV1",{});
+ const positions=readJson("apexLootRoutePositionsV1",{});
+ const routeMap=new Map();
+ for(const [key,value] of Object.entries(routes||{})){
+   if(key==="__mapImages"||!value||typeof value!=="object")continue;
+   const map=clean(value.map||key.split("||")[0]),poi=clean(value.poi||key.split("||")[1]);
+   if(!map||!poi)continue;
+   if(!routeMap.has(map))routeMap.set(map,new Set());
+   routeMap.get(map).add(norm(poi));
+ }
+ const maps=new Set([...Object.keys(positions||{}),...routeMap.keys(),...Object.keys(routes?.__mapImages||{})]);
+ return [...maps].sort((a,b)=>a.localeCompare(b,"ja")).map(map=>{
+   const pos=positions?.[map]&&typeof positions[map]==="object"?positions[map]:{};
+   const poiNames=Object.keys(pos);
+   const registered=routeMap.get(map)||new Set();
+   const missing=poiNames.filter(poi=>!registered.has(norm(poi)));
+   return {
+     map,
+     positioned:poiNames.length,
+     registered:[...registered].length,
+     missing
+   };
+ });
+}
+function recentChanges(){
+ const items=[];
+ const add=(time,type,detail)=>{
+   const stamp=Date.parse(time||"");
+   if(!Number.isFinite(stamp))return;
+   items.push({stamp,time:new Date(stamp).toISOString(),type,detail:clean(detail)});
+ };
+ for(const entry of asArray(readJson("apexTeamNameMigrationAuditV2",[]))){
+   add(entry?.at,"チーム名変更",`${entry?.oldName||""} → ${entry?.newName||""}（${entry?.split||"Split不明"}）`);
+ }
+ for(const entry of asArray(readJson("apexRingConsoleTrialsV1",[]))){
+   add(entry?.updatedAt||entry?.createdAt,"リングコンソール",`${entry?.map||"MAP不明"} / ${entry?.date||"日付不明"} / ${entry?.split||"Split不明"}`);
+ }
+ const routes=readJson("apexLootRoutesV1",{});
+ for(const [key,entry] of Object.entries(routes||{})){
+   if(key==="__mapImages"||!entry||typeof entry!=="object")continue;
+   add(entry?.updatedAt||entry?.createdAt,"漁りルート",`${entry?.map||key.split("||")[0]} / ${entry?.poi||key.split("||")[1]}`);
+ }
+ for(const entry of asArray(readJson(ERROR_KEY,[]))){
+   add(entry?.time,"JavaScriptエラー",entry?.message||entry?.type||"不明なエラー");
+ }
+ return items.sort((a,b)=>b.stamp-a.stamp).slice(0,12);
+}
 async function render(){
  const st=state(),master=st.teamMaster.map(clean).filter(Boolean);
  const splitNames=[...new Set([...Object.keys(st.splits),...Object.keys(st.splitTeams)])];
@@ -3465,10 +3548,40 @@ async function render(){
    : '<div class="v339DiagEmpty">異常候補はありません</div>';
 
  const errorBox=document.getElementById("v339RuntimeErrors");
- const recent=Array.isArray(errors)?errors.slice(-8).reverse():[];
- errorBox.innerHTML=recent.length
-   ? recent.map(e=>`<div class="v339DiagItem"><strong>${esc(e.time||"時刻不明")}</strong><br>${esc(e.message||e.type||"不明なエラー")}<br>${esc(e.detail||"")}</div>`).join("")
+ const recentErrors=Array.isArray(errors)?errors.slice(-8).reverse():[];
+ errorBox.innerHTML=recentErrors.length
+   ? recentErrors.map(e=>`<div class="v339DiagItem"><strong>${esc(e.time||"時刻不明")}</strong><br>${esc(e.message||e.type||"不明なエラー")}<br>${esc(e.detail||"")}</div>`).join("")
    : '<div class="v339DiagEmpty">記録されたエラーはありません</div>';
+
+ const counts=dataCounts(st);
+ document.getElementById("v340DataCounts").innerHTML=[
+   row("ファイト試合",`${counts.fightMatches}件`),
+   row("ファイト数",`${counts.fights}件`),
+   row("統計試合",`${counts.statsMatches}件`),
+   row("通常スクリム",`${counts.scrims}件`),
+   row("ポーランド",`${counts.poland}件`),
+   row("最終安置",`${counts.finalZones}件`),
+   row("リング試行",`${counts.ringTrials}件`),
+   row("漁りルート画像",`${counts.lootRoutes}件`)
+ ].join("");
+
+ const coverage=lootCoverage();
+ const coverageBox=document.getElementById("v340LootCoverage");
+ coverageBox.innerHTML=coverage.length
+   ? coverage.map(item=>{
+       const complete=item.positioned>0&&item.missing.length===0;
+       const missingText=item.missing.length
+         ? `<br>未登録：${esc(item.missing.slice(0,8).join(" / "))}${item.missing.length>8?` ほか${item.missing.length-8}件`:""}`
+         : "";
+       return `<div class="v339DiagItem"><strong>${esc(item.map)}</strong><br>${item.registered} / ${item.positioned}件${complete?"・完了":""}${missingText}</div>`;
+     }).join("")
+   : '<div class="v339DiagEmpty">漁りルートまたはPOI配置データがありません</div>';
+
+ const changes=recentChanges();
+ const changeBox=document.getElementById("v340RecentChanges");
+ changeBox.innerHTML=changes.length
+   ? changes.map(item=>`<div class="v339DiagItem"><strong>${esc(new Date(item.stamp).toLocaleString("ja-JP"))}　${esc(item.type)}</strong><br>${esc(item.detail)}</div>`).join("")
+   : '<div class="v339DiagEmpty">日時を確認できる変更履歴はありません</div>';
 
  const updated=document.getElementById("v339DiagUpdated");
  if(updated)updated.textContent=`最終診断：${new Date().toLocaleString("ja-JP")}`;
@@ -3480,7 +3593,7 @@ function open(){
  document.querySelectorAll(".pageTab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page==="systemDiagnostics"));
  render();
 }
-window.SystemDiagnosticsV339={open,render,teamIssues};
+window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,recentChanges};
 })();</script>
 
 <script id="v293-system-management-script">(()=>{"use strict";function isAdmin(){try{if(window.AppRolesV196?.isAdmin)return!!window.AppRolesV196.isAdmin()}catch(_){}return"admin"===(localStorage.getItem("apexCurrentRoleV174")||localStorage.getItem("apexCurrentRoleV171")||localStorage.getItem("apexPermissionRole")||"")}function syncAdminClass(){document.body.classList.toggle("v293-admin-role",isAdmin())}function boot(){syncAdminClass();const previousApply=window.AppRolesV196?.applyPermissions;if(window.AppRolesV196&&"function"==typeof previousApply&&!previousApply.__v293Wrapped){const wrapped=function(...args){const result=previousApply.apply(this,args);return syncAdminClass(),result};wrapped.__v293Wrapped=!0,window.AppRolesV196.applyPermissions=wrapped}}window.SystemManagementV293={open:function(){syncAdminClass(),isAdmin()&&(document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active")),document.querySelector(".stage")?.classList.add("admin-mode"),document.getElementById("adminSystemManagement")?.classList.add("active"),document.querySelectorAll(".pageTab").forEach(btn=>{btn.classList.toggle("active","systemManagement"===btn.dataset.page)}))},syncAdminClass:syncAdminClass},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),setTimeout(syncAdminClass,300)})();</script>
