@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="zone-ring-test-corrected">
+<head><meta name="apex-build" content="analysis-audit-tests">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1548,6 +1548,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard v339DiagCardWide"><h3>漁りルート総点検</h3><div class="v339DiagRows" id="v343LootAuditSummary"></div><div class="v339DiagList" id="v343LootAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最終安置総点検</h3><div class="v339DiagRows" id="v344ZoneAuditSummary"></div><div class="v339DiagList" id="v344ZoneAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>リングコンソール総点検</h3><div class="v339DiagRows" id="v344RingAuditSummary"></div><div class="v339DiagList" id="v344RingAudit"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><h3>ランキング・チーム分析・メタ分析総点検</h3><div class="v339DiagRows" id="v345AnalysisAuditSummary"></div><div class="v339DiagList" id="v345AnalysisAudit"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><button type="button" class="actionBtn action-refresh" id="v341RunTests">テスト実行</button></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
 </div>
@@ -3609,6 +3610,87 @@ function zoneRingAudit(){
    ring:{trials:trials.length,rates:rates.length,positions:objectSize(positions),issues:ringIssues,issueTotal:ringIssueTotal,ok:ringIssueTotal===0}
  };
 }
+
+function analysisAudit(){
+ const api=window.ScrimAnalysisV342;
+ const issues={api:[],averages:[],order:[],mapStats:[],poi:[],teamDetail:[],exclusion:[],bridge:[]};
+ if(!api){
+   issues.api.push("ScrimAnalysisV342未定義");
+   return {games:0,eligibleGames:0,teams:0,pois:0,issues,issueTotal:1,ok:false};
+ }
+ const num=v=>{const x=Number(v);return Number.isFinite(x)?x:0};
+ const key=v=>String(v??"").normalize("NFKC").trim().toLowerCase().replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜'’`´‐‑‒–—―−ーｰ-]+/g,"");
+ let games=[],eligibleGames=[],ranking=[],pois=[];
+ try{
+   games=api.collect?.()||[];
+   eligibleGames=api.collect?.({eligibleOnly:true})||[];
+   ranking=api.aggregate?.(eligibleGames)||[];
+   pois=api.poiRanking?.("")||[];
+ }catch(error){
+   issues.api.push(error?.message||String(error));
+ }
+ const eps=1e-9;
+ for(const team of ranking){
+   const rows=[];
+   for(const game of eligibleGames){
+     const matched=(game.rows||[]).filter(r=>key(api.teamName?.(r)||r.team_name||r.team)===key(team.team));
+     if(!matched.length)continue;
+     rows.push({
+       kp:matched.reduce((s,r)=>s+num(r.kills??r.kp),0),
+       pp:Math.max(...matched.map(r=>num(r.pp)),0),
+       tp:Math.max(...matched.map(r=>num(r.tp)),0),
+       place:Math.min(...matched.map(r=>num(r.placement??r.place)).filter(v=>v>0),999),
+       map:api.canonicalMap?.(game.map)||game.map
+     });
+   }
+   const n=rows.length;
+   const avgKP=n?rows.reduce((s,r)=>s+r.kp,0)/n:0;
+   const avgPP=n?rows.reduce((s,r)=>s+r.pp,0)/n:0;
+   const avgTP=n?rows.reduce((s,r)=>s+r.tp,0)/n:0;
+   const placed=rows.filter(r=>r.place<999);
+   const avgPlace=placed.length?placed.reduce((s,r)=>s+r.place,0)/placed.length:0;
+   if(Math.abs(avgKP-num(team.avgKP))>eps||Math.abs(avgPP-num(team.avgPP))>eps||Math.abs(avgTP-num(team.avgTP))>eps||Math.abs(avgPlace-num(team.avgPlace))>eps){
+     issues.averages.push(`${team.team}: 再計算不一致`);
+   }
+   const maps=new Map();
+   for(const row of rows){
+     const x=maps.get(row.map)||{kp:0,pp:0,tp:0,n:0};
+     x.kp+=row.kp;x.pp+=row.pp;x.tp+=row.tp;x.n++;
+     maps.set(row.map,x);
+   }
+   for(const stat of team.mapStats||[]){
+     const x=maps.get(stat.map);
+     if(!x||Math.abs(x.kp/x.n-num(stat.avgKP))>eps||Math.abs(x.pp/x.n-num(stat.avgPP))>eps||Math.abs(x.tp/x.n-num(stat.avgTP))>eps){
+       issues.mapStats.push(`${team.team} / ${stat.map}`);
+     }
+   }
+ }
+ for(let i=1;i<ranking.length;i++){
+   const a=ranking[i-1],b=ranking[i];
+   if(num(a.avgTP)<num(b.avgTP)-eps||
+      (Math.abs(num(a.avgTP)-num(b.avgTP))<=eps&&num(a.avgPP)<num(b.avgPP)-eps)||
+      (Math.abs(num(a.avgTP)-num(b.avgTP))<=eps&&Math.abs(num(a.avgPP)-num(b.avgPP))<=eps&&num(a.avgKP)<num(b.avgKP)-eps)){
+     issues.order.push(`${a.team} → ${b.team}`);
+   }
+ }
+ for(const p of pois){
+   if(!p.map||!p.poi||!Number.isFinite(Number(p.avgTP))||Number(p.matches)<1)issues.poi.push(`${p.map||"-"} / ${p.poi||"-"}`);
+ }
+ for(const team of ranking.slice(0,Math.min(10,ranking.length))){
+   try{
+     const detail=api.teamDetail?.(team.team);
+     if(!detail||!Array.isArray(detail.rows)||!detail.summary||key(detail.summary.team)!==key(team.team))issues.teamDetail.push(team.team);
+   }catch(_){issues.teamDetail.push(team.team)}
+ }
+ for(const game of eligibleGames){
+   if((game.rows||[]).some(r=>r.exclude_from_stats||r.unregistered_team))issues.exclusion.push(`${game.date||"-"} / Match ${game.matchNo||"-"}`);
+ }
+ if(typeof window.Phase2RankingTeamBridgeV341?.scan!=="function"||typeof window.Phase2RankingTeamBridgeV341?.cleanRows!=="function"){
+   issues.bridge.push("ランキング・チーム分析ブリッジ不足");
+ }
+ const issueTotal=Object.values(issues).reduce((n,list)=>n+list.length,0);
+ return {games:games.length,eligibleGames:eligibleGames.length,teams:ranking.length,pois:pois.length,issues,issueTotal,ok:issueTotal===0};
+}
 function recentChanges(){
  const items=[];
  const add=(time,type,detail)=>{
@@ -3765,6 +3847,27 @@ async function render(){
    },"リングコンソールの構造上の異常候補はありません");
  }
 
+
+ const ar=analysisAudit();
+ const analysisSummary=document.getElementById("v345AnalysisAuditSummary");
+ const analysisBox=document.getElementById("v345AnalysisAudit");
+ if(analysisSummary&&analysisBox){
+   analysisSummary.innerHTML=[
+     row("対象試合",`${ar.games}件`),
+     row("集計対象試合",`${ar.eligibleGames}件`),
+     row("ランキングチーム",`${ar.teams}件`),
+     row("POIランキング",`${ar.pois}件`),
+     row("異常候補",`${ar.issueTotal}件`,ar.issueTotal?"Warn":"Ok")
+   ].join("");
+   const labels={api:"集計API",averages:"平均計算",order:"ランキング順",mapStats:"MAP別集計",poi:"POIランキング",teamDetail:"チーム詳細",exclusion:"除外処理",bridge:"表示ブリッジ"};
+   const cards=[];
+   for(const [k,list] of Object.entries(ar.issues)){
+     if(!list.length)continue;
+     cards.push(`<div class="v339DiagItem"><strong>${esc(labels[k]||k)}：${list.length}件</strong><br>${esc(list.slice(0,10).join(" / "))}${list.length>10?`<br>ほか${list.length-10}件`:""}</div>`);
+   }
+   analysisBox.innerHTML=cards.length?cards.join(""):'<div class="v339DiagEmpty">ランキング・分析集計の異常候補はありません</div>';
+ }
+
  const changes=recentChanges();
  const changeBox=document.getElementById("v340RecentChanges");
  changeBox.innerHTML=changes.length
@@ -3814,7 +3917,7 @@ function open(){
  document.querySelectorAll(".pageTab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page==="systemDiagnostics"));
  render();
 }
-window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,lootAudit,zoneRingAudit,recentChanges};
+window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,lootAudit,zoneRingAudit,analysisAudit,recentChanges};
 })();</script>
 
 <script id="v341-automated-self-tests">(()=>{"use strict";
@@ -4031,6 +4134,35 @@ function testRingApi(){
  const missing=Object.entries(checks).filter(([,ok])=>!ok).map(([name])=>name);
  return result("リングコンソール画面処理",missing.length===0,missing.length?`不足: ${missing.join(" / ")}`:`${Object.keys(checks).length}処理あり`);
 }
+
+function analysisReport(){return window.SystemDiagnosticsV339?.analysisAudit?.()}
+function testAnalysisApi(){
+ const api=window.ScrimAnalysisV342;
+ const names=["collect","aggregate","poiRanking","teamDetail","diagnose","canonicalMap","teamName","poiName"];
+ const missing=names.filter(n=>typeof api?.[n]!=="function");
+ return result("分析集計API",missing.length===0,missing.length?`不足: ${missing.join(" / ")}`:`${names.length}処理あり`);
+}
+function testRankingAverages(){
+ try{const r=analysisReport();const n=r?.issues?.averages?.length??-1;return result("ランキング平均計算",n===0,n<0?"診断不可":`不一致${n}件`)}catch(e){return result("ランキング平均計算",false,e?.message||e)}
+}
+function testRankingOrder(){
+ try{const r=analysisReport();const n=r?.issues?.order?.length??-1;return result("総合ランキング順",n===0,n<0?"診断不可":`順序不正${n}件`)}catch(e){return result("総合ランキング順",false,e?.message||e)}
+}
+function testMapAggregation(){
+ try{const r=analysisReport();const n=r?.issues?.mapStats?.length??-1;return result("MAP別ランキング集計",n===0,n<0?"診断不可":`不一致${n}件`)}catch(e){return result("MAP別ランキング集計",false,e?.message||e)}
+}
+function testPoiRanking(){
+ try{const r=analysisReport();const n=r?.issues?.poi?.length??-1;return result("POIランキング",n===0,n<0?"診断不可":`不正${n}件`)}catch(e){return result("POIランキング",false,e?.message||e)}
+}
+function testTeamAnalysis(){
+ try{const r=analysisReport();const n=r?.issues?.teamDetail?.length??-1;return result("チーム分析詳細",n===0,n<0?"診断不可":`不整合${n}件`)}catch(e){return result("チーム分析詳細",false,e?.message||e)}
+}
+function testAnalysisExclusion(){
+ try{const r=analysisReport();const n=r?.issues?.exclusion?.length??-1;return result("未登録チーム集計除外",n===0,n<0?"診断不可":`混入${n}試合`)}catch(e){return result("未登録チーム集計除外",false,e?.message||e)}
+}
+function testAnalysisBridge(){
+ try{const r=analysisReport();const n=r?.issues?.bridge?.length??-1;return result("ランキング・分析表示処理",n===0,n<0?"診断不可":`不足${n}件`)}catch(e){return result("ランキング・分析表示処理",false,e?.message||e)}
+}
 function testNoRuntimeErrorsDuringRun(beforeCount){
  const errors=(()=>{try{return JSON.parse(localStorage.getItem("apexRuntimeErrorsV285")||"[]")}catch(_){return[]}})();
  const added=Math.max(0,errors.length-beforeCount);
@@ -4067,7 +4199,15 @@ async function run(){
    testRingTrialStructure(),
    testRingProbabilityMath(),
    testRingRelations(),
-   testRingApi()
+   testRingApi(),
+   testAnalysisApi(),
+   testRankingAverages(),
+   testRankingOrder(),
+   testMapAggregation(),
+   testPoiRanking(),
+   testTeamAnalysis(),
+   testAnalysisExclusion(),
+   testAnalysisBridge()
  ];
  await new Promise(resolve=>setTimeout(resolve,30));
  results.push(testNoRuntimeErrorsDuringRun(errorBefore));
