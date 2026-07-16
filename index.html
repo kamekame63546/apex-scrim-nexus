@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="system-diagnostics-complete">
+<head><meta name="apex-build" content="automated-self-tests">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -517,6 +517,13 @@ body.perm-viewer [onclick*="登録"],body.perm-viewer [onclick*=Add],body.perm-v
 .v339DiagItem strong{color:#fdba74}
 .v339DiagEmpty{border:1px dashed rgba(255,255,255,.14);border-radius:10px;padding:13px;color:#94a5c4;text-align:center;font-size:12px;font-weight:850}
 .v339DiagNote{margin-top:10px;color:#94a5c4;font-size:11px;font-weight:800;line-height:1.6}
+.v341TestHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.v341TestHead h3{margin:0!important}
+.v341TestSummary{margin-bottom:10px;border:1px solid #26344f;border-radius:10px;background:#0d1426;padding:9px 11px;color:#cbd8f5;font-size:12px;font-weight:900}
+.v341TestPass{border-color:rgba(34,197,94,.35)!important;color:#86efac!important}
+.v341TestFail{border-color:rgba(239,68,68,.4)!important;color:#fca5a5!important}
+.v341TestRunning{border-color:rgba(59,130,246,.4)!important;color:#bfdbfe!important}
+
 body:not(.v293-admin-role) #adminSystemDiagnostics{display:none!important}
 @media(max-width:900px){.v339DiagGrid{grid-template-columns:1fr}.v339DiagCardWide{grid-column:auto}.v339DiagHeader{align-items:flex-start;flex-direction:column}}
 
@@ -1538,6 +1545,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard"><h3>登録データ件数</h3><div class="v339DiagRows" id="v340DataCounts"></div></section>
 <section class="v339DiagCard"><h3>漁りルート登録状況</h3><div class="v339DiagList" id="v340LootCoverage"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><button type="button" class="actionBtn action-refresh" id="v341RunTests">テスト実行</button></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
 </div>
 <div class="v339DiagNote">この画面は読み取り専用です。診断を実行しても登録済みデータは変更されません。</div>
 </div>
@@ -3594,6 +3602,103 @@ function open(){
  render();
 }
 window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,recentChanges};
+})();</script>
+
+<script id="v341-automated-self-tests">(()=>{"use strict";
+const STATE_KEY="apexV62Clean";
+const clean=v=>String(v??"").normalize("NFKC").trim().replace(/\s+/g," ");
+const uniq=values=>{const out=[],seen=new Set;for(const raw of Array.isArray(values)?values:[]){const v=clean(raw),k=v.toLocaleLowerCase();if(!v||seen.has(k))continue;seen.add(k);out.push(v)}return out};
+const clone=value=>JSON.parse(JSON.stringify(value));
+const result=(name,ok,detail)=>({name,ok:!!ok,detail:String(detail||"")});
+
+function readState(){
+ try{return JSON.parse(localStorage.getItem(STATE_KEY)||"{}")||{}}catch(_){return{}}
+}
+function compareSnapshot(before,after){
+ return JSON.stringify(before)===JSON.stringify(after);
+}
+function testMasterCandidates(base){
+ const master=uniq(base.teamMaster||[]);
+ return result("自チーム候補はチームマスターのみ",master.length===56,`候補 ${master.length}件 / 期待 56件`);
+}
+function testSplitAddRemove(base){
+ const st=clone(base);
+ st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"?st.splitTeams:{};
+ const split=st.current||Object.keys(st.splitTeams)[0]||"TEST";
+ const before=uniq(st.splitTeams[split]||[]);
+ const master=uniq(st.teamMaster||[]);
+ const candidate=master.find(v=>!before.includes(v));
+ if(!candidate)return result("Split追加・外す",false,"追加可能な未使用チームがありません");
+ const added=uniq([...before,candidate]);
+ const removed=added.filter(v=>v!==candidate);
+ const ok=added.length===before.length+1&&added.includes(candidate)&&JSON.stringify(removed)===JSON.stringify(before);
+ return result("Split追加・外す",ok,`${before.length} → ${added.length} → ${removed.length}件`);
+}
+function testNewSplitStartsEmpty(base){
+ const st=clone(base);
+ st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"?st.splitTeams:{};
+ const key="__AUTOTEST_NEW_SPLIT__";
+ if(!Array.isArray(st.splitTeams[key]))st.splitTeams[key]=[];
+ return result("新Splitは0件で開始",st.splitTeams[key].length===0,`${st.splitTeams[key].length}件`);
+}
+function testBackupCollection(){
+ try{
+   const payload=window.BackupApp?.collect?.();
+   const storage=payload?.localStorage;
+   const ok=!!payload&&payload.app==="APEX SCRIM NEXUS"&&storage&&typeof storage==="object"&&STATE_KEY in storage;
+   return result("バックアップ生成",ok,ok?`保存キー ${Object.keys(storage).length}件`:"BackupApp.collect()の結果が不正");
+ }catch(error){return result("バックアップ生成",false,error?.message||error)}
+}
+function testIntegrity(){
+ try{
+   const report=window.Phase1RegressionV336?.diagnose?.();
+   return result("共通データ整合性",!!report?.ok,report?`${report.checks?.filter(x=>x.ok).length||0}/${report.checks?.length||0}項目正常`:"診断機能なし");
+ }catch(error){return result("共通データ整合性",false,error?.message||error)}
+}
+function testNoRuntimeErrorsDuringRun(beforeCount){
+ const errors=(()=>{try{return JSON.parse(localStorage.getItem("apexRuntimeErrorsV285")||"[]")}catch(_){return[]}})();
+ const added=Math.max(0,errors.length-beforeCount);
+ return result("テスト実行中の新規JavaScriptエラー",added===0,added===0?"0件":`${added}件`);
+}
+async function run(){
+ const btn=document.getElementById("v341RunTests"),summary=document.getElementById("v341TestSummary"),box=document.getElementById("v341TestResults");
+ if(!summary||!box)return null;
+ if(btn)btn.disabled=true;
+ summary.className="v341TestSummary v341TestRunning";
+ summary.textContent="テスト実行中…";
+ box.innerHTML="";
+ const beforeRaw={};
+ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);beforeRaw[k]=localStorage.getItem(k)}
+ const errorBefore=(()=>{try{return JSON.parse(localStorage.getItem("apexRuntimeErrorsV285")||"[]").length}catch(_){return 0}})();
+ const base=readState();
+ const results=[
+   testMasterCandidates(base),
+   testSplitAddRemove(base),
+   testNewSplitStartsEmpty(base),
+   testBackupCollection(),
+   testIntegrity()
+ ];
+ await new Promise(resolve=>setTimeout(resolve,30));
+ results.push(testNoRuntimeErrorsDuringRun(errorBefore));
+ const afterRaw={};
+ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);afterRaw[k]=localStorage.getItem(k)}
+ results.push(result("本番データ非変更",compareSnapshot(beforeRaw,afterRaw),"localStorageの前後比較"));
+ const passed=results.filter(x=>x.ok).length,failed=results.length-passed;
+ summary.className=`v341TestSummary ${failed?"v341TestFail":"v341TestPass"}`;
+ summary.textContent=`${passed}/${results.length} PASS${failed?`・${failed} FAIL`:"・全項目正常"}`;
+ box.innerHTML=results.map(x=>`<div class="v339DiagItem"><strong class="${x.ok?"v339DiagOk":"v339DiagBad"}">${x.ok?"PASS":"FAIL"}　${String(x.name).replace(/[&<>]/g,"")}</strong><br>${String(x.detail).replace(/[&<>]/g,"")}</div>`).join("");
+ try{sessionStorage.setItem("apexSelfTestLastV341",JSON.stringify({at:new Date().toISOString(),passed,total:results.length,results}))}catch(_){}
+ if(btn)btn.disabled=false;
+ return {passed,total:results.length,results};
+}
+function bind(){
+ const btn=document.getElementById("v341RunTests");
+ if(btn&&!btn.dataset.bound){btn.dataset.bound="1";btn.addEventListener("click",run)}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,500),{once:true});
+const originalOpen=window.SystemDiagnosticsV339?.open;
+if(typeof originalOpen==="function")window.SystemDiagnosticsV339.open=function(){const r=originalOpen.apply(this,arguments);setTimeout(bind,0);return r};
+window.AutomatedSelfTestsV341={run};
 })();</script>
 
 <script id="v293-system-management-script">(()=>{"use strict";function isAdmin(){try{if(window.AppRolesV196?.isAdmin)return!!window.AppRolesV196.isAdmin()}catch(_){}return"admin"===(localStorage.getItem("apexCurrentRoleV174")||localStorage.getItem("apexCurrentRoleV171")||localStorage.getItem("apexPermissionRole")||"")}function syncAdminClass(){document.body.classList.toggle("v293-admin-role",isAdmin())}function boot(){syncAdminClass();const previousApply=window.AppRolesV196?.applyPermissions;if(window.AppRolesV196&&"function"==typeof previousApply&&!previousApply.__v293Wrapped){const wrapped=function(...args){const result=previousApply.apply(this,args);return syncAdminClass(),result};wrapped.__v293Wrapped=!0,window.AppRolesV196.applyPermissions=wrapped}}window.SystemManagementV293={open:function(){syncAdminClass(),isAdmin()&&(document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active")),document.querySelector(".stage")?.classList.add("admin-mode"),document.getElementById("adminSystemManagement")?.classList.add("active"),document.querySelectorAll(".pageTab").forEach(btn=>{btn.classList.toggle("active","systemManagement"===btn.dataset.page)}))},syncAdminClass:syncAdminClass},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),setTimeout(syncAdminClass,300)})();</script>
