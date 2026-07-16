@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="team-management-consolidated">
+<head><meta name="apex-build" content="performance-optimization-phase1">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1983,12 +1983,14 @@ const alias=(type,raw)=>window.DisplayAliasV229?.alias?.(type,raw)??String(raw??
 const clean=v=>String(v??"").normalize("NFKC").trim().replace(/\s+/g," ");
 const uniq=values=>{const out=[],seen=new Set;for(const raw of Array.isArray(values)?values:[]){const v=clean(raw),k=v.toLocaleLowerCase();if(!v||seen.has(k))continue;seen.add(k);out.push(v)}return out};
 const sortAZ=(type,arr)=>[...(arr||[])].sort((a,b)=>alias(type,a).localeCompare(alias(type,b),"ja",{sensitivity:"base",numeric:true}));
+let stateCacheRaw=null,stateCacheValue=null,renderQueued=false;
+function invalidateStateCache(){stateCacheRaw=null;stateCacheValue=null}
 
 function readState(){
   try{
-    const core=window.ApexDataCore;
-    const st=core?.readJSON?.(KEY,{}, {validate:v=>!!v&&typeof v==="object"&&!Array.isArray(v)})
-      || JSON.parse(localStorage.getItem(KEY)||"{}");
+    const raw=localStorage.getItem(KEY)||"{}";
+    if(raw===stateCacheRaw&&stateCacheValue)return JSON.parse(JSON.stringify(stateCacheValue));
+    const st=JSON.parse(raw);
     st.teamMaster=uniq(st.teamMaster||[]);
     st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"&&!Array.isArray(st.splitTeams)?st.splitTeams:{};
     st.splits=st.splits&&typeof st.splits==="object"&&!Array.isArray(st.splits)?st.splits:{};
@@ -2000,7 +2002,8 @@ function readState(){
       st.splitTeams[split]=uniq(st.splitTeams[split]);
     }
     st.teams=uniq(st.splitTeams[st.current]||[]);
-    return st;
+    stateCacheRaw=raw;stateCacheValue=st;
+    return JSON.parse(JSON.stringify(st));
   }catch(error){
     console.error("master-data read failed",error);
     return {teamMaster:[],splitTeams:{},splits:{},current:"",teams:[]};
@@ -2011,10 +2014,13 @@ function writeState(st,reason){
   st.teamMaster=uniq(st.teamMaster||[]);
   for(const split of Object.keys(st.splitTeams||{}))st.splitTeams[split]=uniq(st.splitTeams[split]);
   st.teams=uniq(st.splitTeams?.[st.current]||[]);
+  const serialized=JSON.stringify(st);
+  invalidateStateCache();
   const core=window.ApexDataCore;
   if(core?.transaction)core.transaction({[KEY]:st},{reason});
-  else localStorage.setItem(KEY,JSON.stringify(st));
-  window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:JSON.stringify(st)}));
+  else localStorage.setItem(KEY,serialized);
+  stateCacheRaw=serialized;stateCacheValue=JSON.parse(serialized);
+  window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:serialized}));
 }
 
 function teamValues(){
@@ -2037,8 +2043,12 @@ function ensureOwnTeamCard(){
   if(!sel)return;
   const current=localStorage.getItem("apexIntegratedOwnTeam")||"";
   const teams=sortAZ("team",teamValues());
-  sel.innerHTML='<option value="">自チームを選択</option>'+
-    teams.map(v=>`<option value="${esc(v)}" ${v===current?"selected":""}>${esc(alias("team",v))}</option>`).join("");
+  const signature=JSON.stringify([current,teams]);
+  if(sel.dataset.optionsSignature!==signature){
+    sel.innerHTML='<option value="">自チームを選択</option>'+
+      teams.map(v=>`<option value="${esc(v)}" ${v===current?"selected":""}>${esc(alias("team",v))}</option>`).join("");
+    sel.dataset.optionsSignature=signature;
+  }
   sel.onchange=()=>window.HomeApp?.setOwnTeam?.(sel.value);
   const count=card.querySelector("#adminOwnTeamCount");
   if(count)count.textContent=current?alias("team",current):`未選択（候補${teams.length}件）`;
@@ -2184,10 +2194,10 @@ function renderList(){
   };
 }
 
-let timer=0;
 function run(){
-  clearTimeout(timer);
-  timer=setTimeout(()=>{enhanceCards();ensureOwnTeamCard()},20);
+  if(renderQueued)return;
+  renderQueued=true;
+  requestAnimationFrame(()=>{renderQueued=false;enhanceCards();ensureOwnTeamCard()});
 }
 
 function wrapRender(owner,name){
@@ -2203,7 +2213,7 @@ function wrapRender(owner,name){
 }
 
 document.addEventListener("DOMContentLoaded",()=>{setTimeout(run,350);setTimeout(run,900)},{once:true});
-window.addEventListener("storage",e=>{if([KEY,"apexIntegratedOwnTeam","apexDisplayAliasesV1"].includes(e.key))run()});
+window.addEventListener("storage",e=>{if([KEY,"apexIntegratedOwnTeam","apexDisplayAliasesV1"].includes(e.key)){if(e.key===KEY)invalidateStateCache();run()}});
 wrapRender(window.AdminReg,"render");
 wrapRender(window.SplitMasterManager,"render");
 
@@ -2366,7 +2376,7 @@ window.TeamNameMigrationV1={migrate,applyMappingsToValue,render:renderCard};if(d
   旧コードから TeamSplitV243 が呼ばれても、同じ正式処理へ転送する。
 */
 function api(){return window.MasterDataListV231}
-function refresh(){api()?.enhance?.();api()?.render?.()}
+function refresh(){api()?.enhance?.();if(document.getElementById("masterListLayerV231")?.classList.contains("open"))api()?.render?.()}
 window.TeamSplitV243={
   render:refresh,
   run:refresh,
@@ -3374,10 +3384,13 @@ const STATE_KEY="apexV62Clean",ERROR_KEY="apexRuntimeErrorsV285",IMAGE_DB="apexL
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clean=v=>String(v??"").normalize("NFKC").trim().replace(/\s+/g," ");
 const norm=v=>clean(v).toLocaleLowerCase();
+let renderStorageCache=null;
+function beginRenderCache(){renderStorageCache=new Map();for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)renderStorageCache.set(k,localStorage.getItem(k))}}
+function endRenderCache(){renderStorageCache=null}
 
 function readJson(key,fallback){
  try{
-   const raw=localStorage.getItem(key);
+   const raw=renderStorageCache?.has(key)?renderStorageCache.get(key):localStorage.getItem(key);
    return raw==null?fallback:JSON.parse(raw);
  }catch(_){return fallback}
 }
@@ -3518,6 +3531,7 @@ function recentChanges(){
  return items.sort((a,b)=>b.stamp-a.stamp).slice(0,12);
 }
 async function render(){
+ beginRenderCache();
  const st=state(),master=st.teamMaster.map(clean).filter(Boolean);
  const splitNames=[...new Set([...Object.keys(st.splits),...Object.keys(st.splitTeams)])];
  const ownCandidates=master.length;
@@ -3594,6 +3608,7 @@ async function render(){
 
  const updated=document.getElementById("v339DiagUpdated");
  if(updated)updated.textContent=`最終診断：${new Date().toLocaleString("ja-JP")}`;
+ endRenderCache();
 }
 function open(){
  document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active"));
