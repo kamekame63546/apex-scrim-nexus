@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><meta name="apex-build" content="performance-cleanup-final">
+<head><meta name="apex-build" content="scrim-audit-tests-expanded">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX SCRIM NEXUS</title>
@@ -1543,6 +1543,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <section class="v339DiagCard"><h3>チーム異常候補</h3><div class="v339DiagList" id="v339TeamIssues"></div></section>
 <section class="v339DiagCard"><h3>直近のJavaScriptエラー</h3><div class="v339DiagList" id="v339RuntimeErrors"></div></section>
 <section class="v339DiagCard"><h3>登録データ件数</h3><div class="v339DiagRows" id="v340DataCounts"></div></section>
+<section class="v339DiagCard v339DiagCardWide"><h3>スクリム総点検</h3><div class="v339DiagRows" id="v342ScrimAuditSummary"></div><div class="v339DiagList" id="v342ScrimAudit"></div></section>
 <section class="v339DiagCard"><h3>漁りルート登録状況</h3><div class="v339DiagList" id="v340LootCoverage"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><h3>最近変更されたデータ</h3><div class="v339DiagList" id="v340RecentChanges"></div></section>
 <section class="v339DiagCard v339DiagCardWide"><div class="v341TestHead"><h3>自動テスト</h3><button type="button" class="actionBtn action-refresh" id="v341RunTests">テスト実行</button></div><div class="v341TestSummary" id="v341TestSummary">未実行</div><div class="v339DiagList" id="v341TestResults"></div><div class="v339DiagNote">テストはメモリ上の複製データで実行し、本番データには書き込みません。</div></section>
@@ -3590,6 +3591,38 @@ async function render(){
    ? changes.map(item=>`<div class="v339DiagItem"><strong>${esc(new Date(item.stamp).toLocaleString("ja-JP"))}　${esc(item.type)}</strong><br>${esc(item.detail)}</div>`).join("")
    : '<div class="v339DiagEmpty">日時を確認できる変更履歴はありません</div>';
 
+ const scrimReport=(()=>{try{return window.ScrimAnalysisV342?.diagnose?.()||window.ScrimDataV340?.diagnose?.()||null}catch(error){return{error:error?.message||String(error)}}})();
+ const scrimSummary=document.getElementById("v342ScrimAuditSummary");
+ const scrimBox=document.getElementById("v342ScrimAudit");
+ if(scrimSummary&&scrimBox){
+   if(!scrimReport){
+     scrimSummary.innerHTML=row("診断機能","未接続","Warn");
+     scrimBox.innerHTML='<div class="v339DiagEmpty">スクリム診断機能を取得できません</div>';
+   }else if(scrimReport.error){
+     scrimSummary.innerHTML=row("診断実行","失敗","Bad");
+     scrimBox.innerHTML=`<div class="v339DiagItem"><strong>診断エラー</strong><br>${esc(scrimReport.error)}</div>`;
+   }else{
+     const issues=scrimReport.issues||{};
+     const counts=Object.fromEntries(Object.entries(issues).map(([k,v])=>[k,Array.isArray(v)?v.length:0]));
+     const issueTotal=Object.values(counts).reduce((a,b)=>a+b,0);
+     scrimSummary.innerHTML=[
+       row("対象Split",scrimReport.split||"不明"),
+       row("全試合",`${scrimReport.games||0}件`),
+       row("通常",`${scrimReport.normal??scrimReport.games??0}件`),
+       row("ポーランド",`${scrimReport.poland||0}件`),
+       row("集計対象チーム",`${scrimReport.teams??scrimReport.eligibleTeams??0}件`),
+       row("異常候補",`${issueTotal}件`,issueTotal?"Warn":"Ok")
+     ].join("");
+     const labels={missingPoi:"POI未入力",unregistered:"未登録チーム",duplicates:"重複試合",duplicateMatches:"重複試合",invalidScore:"不正スコア",emptyMatches:"空の試合"};
+     const cards=[];
+     for(const [key,list] of Object.entries(issues)){
+       if(!Array.isArray(list)||!list.length)continue;
+       cards.push(`<div class="v339DiagItem"><strong>${esc(labels[key]||key)}：${list.length}件</strong><br>${esc(list.slice(0,8).join(" / "))}${list.length>8?`<br>ほか${list.length-8}件`:""}</div>`);
+     }
+     scrimBox.innerHTML=cards.length?cards.join(""):'<div class="v339DiagEmpty">スクリムの異常候補はありません</div>';
+   }
+ }
+
  const updated=document.getElementById("v339DiagUpdated");
  if(updated)updated.textContent=`最終診断：${new Date().toLocaleString("ja-JP")}`;
  endRenderCache();
@@ -3670,6 +3703,27 @@ function testIntegrity(){
    return result("共通データ整合性",failed.length===0,failed.length?`異常: ${failed.map(([name])=>name).join(" / ")}`:`${checks.length}/${checks.length}項目正常`);
  }catch(error){return result("共通データ整合性",false,error?.message||error)}
 }
+function testScrimDiagnostic(){
+ try{
+   const report=window.ScrimAnalysisV342?.diagnose?.()||window.ScrimDataV340?.diagnose?.();
+   if(!report)return result("スクリム診断接続",false,"診断APIを取得できません");
+   const issueCount=Object.values(report.issues||{}).reduce((n,v)=>n+(Array.isArray(v)?v.length:0),0);
+   return result("スクリム診断接続",true,`${report.games||0}試合・異常候補${issueCount}件`);
+ }catch(error){return result("スクリム診断接続",false,error?.message||error)}
+}
+function testScrimCrudFunctions(){
+ const edit=typeof window.ScrimSavedList?.edit==="function"||typeof window.ScrimSavedList?.startEdit==="function";
+ const remove=typeof window.ScrimSavedList?.remove==="function"||typeof window.ScrimSavedList?.deleteSet==="function"||typeof window.ScrimSavedList?.delete==="function";
+ const render=typeof window.ScrimSavedList?.render==="function";
+ return result("登録済みスクリム操作",render&&(edit||remove),`表示:${render?"有":"無"} 編集:${edit?"有":"無"} 削除:${remove?"有":"無"}`);
+}
+function testScrimSplitIsolation(){
+ try{
+   const report=window.ScrimAnalysisV342?.collect?.()||window.ScrimDataV340?.allGames?.()||[];
+   const bad=(Array.isArray(report)?report:[]).filter(g=>!g?.split);
+   return result("スクリムSplit紐付け",bad.length===0,`Split未設定 ${bad.length}件`);
+ }catch(error){return result("スクリムSplit紐付け",false,error?.message||error)}
+}
 function testNoRuntimeErrorsDuringRun(beforeCount){
  const errors=(()=>{try{return JSON.parse(localStorage.getItem("apexRuntimeErrorsV285")||"[]")}catch(_){return[]}})();
  const added=Math.max(0,errors.length-beforeCount);
@@ -3691,7 +3745,10 @@ async function run(){
    testSplitAddRemove(base),
    testNewSplitStartsEmpty(base),
    testBackupCollection(),
-   testIntegrity()
+   testIntegrity(),
+   testScrimDiagnostic(),
+   testScrimCrudFunctions(),
+   testScrimSplitIsolation()
  ];
  await new Promise(resolve=>setTimeout(resolve,30));
  results.push(testNoRuntimeErrorsDuringRun(errorBefore));
