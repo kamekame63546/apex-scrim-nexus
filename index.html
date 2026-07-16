@@ -1234,6 +1234,73 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 .lootList{max-height:280px;overflow:auto;border:1px solid #26344f;border-radius:12px;background:#0b1223}.lootList table{width:100%;border-collapse:collapse}.lootList td,.lootList th{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.075);font-size:11px;text-align:center}.lootList th{position:sticky;top:0;background:#121a31;color:#bfd0f3}.lootList button{height:25px;border:0;border-radius:8px;color:#fff;font-weight:900;cursor:pointer;margin:0 2px}
 @media(max-width:720px){.lootUploadZone{grid-template-columns:1fr}.lootMapsGrid{grid-template-columns:1fr}.lootAdminGrid{grid-template-columns:1fr}.lootPlacementBar{grid-template-columns:1fr}.lootModalMeta{gap:8px}.lootModalMeta b{font-size:15px}.lootModalMeta strong{font-size:13px}}
 </style>
+
+<style id="fightNtImportStylesV360">
+.fightNtPane{display:none;min-height:640px}.fightNtPane.active{display:block}.fightNtGrid{display:grid;grid-template-columns:1.05fr .95fr;gap:12px}.fightNtCard{border:1px solid #26344f;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));padding:12px;min-width:0}.fightNtCard h3{margin:0 0 10px;font-size:15px}.fightNtTools{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) auto;gap:8px;align-items:end}.fightNtTools>.fightNtHelp{grid-column:1/-1;grid-row:2;margin-top:0}.fightNtTools label,.fightNtUrlRow label{display:grid;gap:4px;color:#bbcaf0;font-size:11px;font-weight:850}.fightNtTools input,.fightNtUrlRow input,.fightNtUrlRow select{height:32px;border-radius:10px;border:1px solid #26344f;background:#0b1223;color:#edf3ff;padding:0 9px}.fightNtTools button,.fightNtUrlRow button,.fightNtActions button{height:32px;border:0;border-radius:10px;padding:0 12px;color:#fff;font-weight:900;cursor:pointer}.fightNtPrimary{background:linear-gradient(135deg,#f97316,#c2410c)}.fightNtSecondary{background:#18233e;border:1px solid #26344f!important}.fightNtList{margin-top:10px;display:grid;gap:7px;max-height:430px;overflow:auto}.fightNtItem{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;border:1px solid #26344f;border-radius:12px;background:#0d1426;padding:9px;cursor:pointer}.fightNtItem:hover,.fightNtItem.selected{border-color:#f97316;background:rgba(249,115,22,.09)}.fightNtItem input{width:16px;height:16px}.fightNtItem b{display:block;font-size:13px}.fightNtItem span{display:block;color:#94a5c4;font-size:11px;margin-top:3px}.fightNtBadge{border-radius:999px;padding:3px 7px;background:rgba(34,197,94,.12);color:#bbf7d0;font-size:10px;font-weight:900}.fightNtBadge.done{background:rgba(148,163,184,.12);color:#cbd5e1}.fightNtUrlRow{display:grid;grid-template-columns:1fr 180px auto;gap:8px;align-items:end}.fightNtStatus{margin-top:10px;white-space:pre-wrap;border:1px solid #26344f;border-radius:12px;background:#0b1223;color:#cbd8f5;padding:10px;font-size:12px;line-height:1.55;min-height:58px}.fightNtStatus.good{border-color:rgba(34,197,94,.45);color:#bbf7d0}.fightNtStatus.bad{border-color:rgba(239,68,68,.45);color:#fecaca}.fightNtSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.fightNtMetric{background:#0d1426;border:1px solid #26344f;border-radius:11px;padding:8px;text-align:center}.fightNtMetric span{display:block;color:#94a5c4;font-size:10px}.fightNtMetric b{display:block;margin-top:3px;font-size:16px}.fightNtPreview{max-height:360px;overflow:auto;border:1px solid #26344f;border-radius:12px;background:#0b1223}.fightNtPreview table{width:100%;border-collapse:collapse}.fightNtPreview th,.fightNtPreview td{padding:6px;border-bottom:1px solid rgba(255,255,255,.07);font-size:11px;text-align:center;white-space:nowrap}.fightNtPreview th{position:sticky;top:0;background:#121a31}.fightNtActions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}.fightNtEmpty{padding:18px;text-align:center;color:#94a5c4}.fightNtHelp{margin-top:8px;color:#94a5c4;font-size:11px;line-height:1.5}@media(max-width:1100px){.fightNtGrid{grid-template-columns:1fr}.fightNtTools{grid-template-columns:1fr 1fr}.fightNtUrlRow{grid-template-columns:1fr}.fightNtSummary{grid-template-columns:repeat(2,1fr)}}
+
+/* FIGHT NT import compact layout v5 */
+.scrimRegisterSplit:has(#fightNtImportPanel.active){
+  grid-template-columns:minmax(0,1fr) 500px!important;
+}
+#fightNtImportPanel{
+  overflow-x:hidden!important;
+}
+#fightNtImportPanel .fightNtGrid{
+  grid-template-columns:minmax(0,1fr) minmax(0,.94fr);
+  gap:10px;
+  width:100%;
+  max-width:100%;
+}
+#fightNtImportPanel .fightNtCard{
+  padding:10px;
+  min-width:0;
+  overflow:hidden;
+}
+#fightNtImportPanel .fightNtTools{
+  grid-template-columns:minmax(105px,1fr) minmax(105px,1fr) 74px;
+  gap:7px;
+}
+#fightNtImportPanel .fightNtUrlRow{
+  grid-template-columns:minmax(0,1.15fr) minmax(115px,.85fr) 58px;
+  gap:7px;
+  width:100%;
+}
+#fightNtImportPanel .fightNtTools label,
+#fightNtImportPanel .fightNtUrlRow label{
+  min-width:0;
+}
+#fightNtImportPanel .fightNtTools input,
+#fightNtImportPanel .fightNtUrlRow input,
+#fightNtImportPanel .fightNtUrlRow select{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+#fightNtImportPanel #fightNtAnalyzeBtn{
+  width:58px;
+  min-width:58px;
+  padding:0 6px;
+  white-space:nowrap;
+  align-self:end;
+}
+#fightNtImportPanel .fightNtActions{
+  flex-wrap:wrap;
+}
+@media(max-width:1300px){
+  .scrimRegisterSplit:has(#fightNtImportPanel.active){
+    grid-template-columns:minmax(0,1fr) 460px!important;
+  }
+}
+@media(max-width:1200px){
+  .scrimRegisterSplit:has(#fightNtImportPanel.active){
+    grid-template-columns:1fr!important;
+  }
+  #fightNtImportPanel .fightNtGrid{
+    grid-template-columns:1fr;
+  }
+}
+
+</style>
 </head>
 <body>
 <div class="shell">
@@ -1564,6 +1631,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="scrimRegTabs">
 <button class="active" id="scrimRegTabNormal" onclick="ScrimRegisterAdmin.showTab('normal')" type="button">通常スクリム登録</button>
 <button id="scrimRegTabPoland" onclick="ScrimRegisterAdmin.showTab('poland')" type="button">ポーランド登録</button>
+<button id="scrimRegTabFightNt" onclick="FightNtImportV360.show()" type="button">FIGHT NT取込</button>
 </div>
 <div class="scrimRegisterSplit">
 <div class="scrimRegisterMain">
@@ -1595,6 +1663,36 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="polandInputs" id="polandInputs"></div>
 </section>
 </div>
+</div>
+<div class="scrimRegPane fightNtPane" id="fightNtImportPanel">
+  <div class="fightNtGrid">
+    <section class="fightNtCard">
+      <h3>未取得スクリム一覧</h3>
+      <div class="fightNtTools">
+        <label>開始日<input id="fightNtFrom" type="date"></label>
+        <label>終了日<input id="fightNtTo" type="date"></label>
+        <div class="fightNtHelp">終了済みのみ・新しい順。取得済みは初期状態で除外します。</div>
+        <button class="fightNtPrimary" id="fightNtListBtn" type="button">一覧取得</button>
+      </div>
+      <div class="fightNtList" id="fightNtList"><div class="fightNtEmpty">「一覧取得」を押してください。</div></div>
+    </section>
+    <section class="fightNtCard">
+      <h3>選択スクリムの取込</h3>
+      <div class="fightNtUrlRow">
+        <label>Google Sheets URL<input id="fightNtSheetUrl" placeholder="Discordで発表されたランドマーク表URL"></label>
+        <label>グループ<select id="fightNtGroup"><option value="">先にスクリムを選択</option></select></label>
+        <button class="fightNtPrimary" id="fightNtAnalyzeBtn" type="button">解析</button>
+      </div>
+      <div class="fightNtStatus" id="fightNtStatus">ローカル連携ツールの接続を確認しています。</div>
+      <div class="fightNtSummary" id="fightNtSummary"></div>
+      <div class="fightNtPreview" id="fightNtPreview"><div class="fightNtEmpty">解析結果はここに表示されます。</div></div>
+      <div class="fightNtActions">
+        <button class="fightNtSecondary" id="fightNtClearBtn" type="button">クリア</button>
+        <button class="fightNtPrimary" id="fightNtReflectBtn" type="button" disabled>通常登録フォームへ反映</button>
+      </div>
+      <div class="fightNtHelp">解析結果は自動保存しません。通常登録フォームへ反映後、内容を目視確認して既存の「追加」を押してください。</div>
+    </section>
+  </div>
 </div>
 </div>
 <aside class="scrimTeamSidebar polandCard">
@@ -4437,5 +4535,93 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal()});document.addEventListener("click",e=>{if(e.target?.id==="lootRouteModal")closeModal()});window.addEventListener("storage",e=>{if([DATA_KEY,POS_KEY,ORDER_KEY,TRACKER_KEY,MAP_KEY,LANDMARK_KEY].includes(e.key)){if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs();if(document.getElementById("lootRouteAdminPanel")?.classList.contains("active"))renderAdmin()}});window.addEventListener("apex:loot-route-change",()=>{if(document.getElementById("lootRoutePanel")?.classList.contains("active"))renderTabs()});
 window.LootRouteApp={show,showAdmin,leave:leaveLootRoute,openRoute,closeModal,renderAdmin,saveRoute,clearForm,editRoute,deleteRoute,beginPlacement,savePlacement,changePlacementMap};
 })();</script>
+
+<script id="fightNtImportScriptV363">
+(()=>{
+'use strict';
+const BRIDGE='http://127.0.0.1:8790';
+const IMPORTED_KEY='fightNtImportedSourcesV1';
+const PENDING_KEY='fightNtPendingImportV1';
+let state={scrims:[],selected:null,groups:[],analysis:null};
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const readImported=()=>{try{return JSON.parse(localStorage.getItem(IMPORTED_KEY)||'{}')}catch(_){return {}}};
+const writeImported=v=>localStorage.setItem(IMPORTED_KEY,JSON.stringify(v));
+function setStatus(text,kind=''){const el=$('fightNtStatus');if(!el)return;el.textContent=text;el.className='fightNtStatus'+(kind?' '+kind:'')}
+async function call(path,body){const r=await fetch(BRIDGE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const data=await r.json().catch(()=>({}));if(!r.ok||data.ok===false)throw new Error(data.error||`HTTP ${r.status}`);return data}
+function ymd(ts){const d=new Date(Number(ts)*1000),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function displayType(s){const sub=String(s.subtype||'').replace('SCRIM_SUBTYPE_','');const type=String(s.type||'').replace('SCRIM_TYPE_','');return sub||type||'SCRIM'}
+function defaultDates(){const to=new Date(),from=new Date(to);from.setDate(from.getDate()-7);$('fightNtTo').value=to.toISOString().slice(0,10);$('fightNtFrom').value=from.toISOString().slice(0,10)}
+async function health(){try{const r=await fetch(BRIDGE+'/health');if(!r.ok)throw 0;setStatus('ローカル連携ツール：接続済み','good')}catch(_){setStatus('ローカル連携ツールに接続できません。FIGHT_NT_BRIDGEを先に起動してください。','bad')}}
+function show(){
+  ScrimRegisterAdmin.showTab('normal');
+  document.querySelectorAll('.scrimRegPane').forEach(x=>x.classList.remove('active'));
+  $('fightNtImportPanel')?.classList.add('active');
+  document.querySelectorAll('.scrimRegTabs button').forEach(x=>x.classList.remove('active'));
+  $('scrimRegTabFightNt')?.classList.add('active');
+  defaultDates();health();
+}
+async function loadList(){
+  setStatus('FIGHT NTの終了済み一覧とグループ情報を取得しています…');$('fightNtList').innerHTML='<div class="fightNtEmpty">取得中…</div>';
+  try{
+    const data=await call('/list',{}),from=$('fightNtFrom').value,to=$('fightNtTo').value,imported=readImported();
+    const now=Math.floor(Date.now()/1000);
+    const bases=(data.scrims||[])
+      .filter(s=>{
+        const ended=s.finished===true||(Number(s.endAt)>0&&now>=Number(s.endAt));
+        return ended&&(!from||ymd(s.startAt)>=from)&&(!to||ymd(s.startAt)<=to);
+      })
+      .sort((a,b)=>b.startAt-a.startAt||Number(a.block||0)-Number(b.block||0));
+    const resolved=[];const errors=[];
+    for(const s of bases){
+      const sourceKey=String(s.uuid||'');
+      try{
+        const detail=await call('/groups',{uuid:s.uuid});const groups=detail.groups||[];
+        if(!groups.length)throw new Error('確定済みグループ0件');
+        resolved.push({...s,block:Number(s.block||0),groupsData:groups,sourceKey});
+      }catch(e){
+        errors.push(`${displayType(s)} #${s.count}${s.block?` Block ${s.block}`:''}: ${e.message}`);
+        resolved.push({...s,block:Number(s.block||0),groupsData:[],sourceKey,groupError:e.message});
+      }
+    }
+    state.scrims=resolved;
+    const rows=state.scrims.filter(s=>!imported[s.sourceKey]);
+    $('fightNtList').innerHTML=rows.length?rows.map(s=>`<div class="fightNtItem" data-key="${esc(s.sourceKey)}"><input type="radio" name="fightNtScrim"><div><b>${esc(ymd(s.startAt))} ${esc(displayType(s))}${s.block?` Block ${esc(s.block)}`:''}</b><span>#${esc(s.count)} / ${esc(s.matches)}試合 / ${esc((s.groupsData||[]).length||s.groups)}グループ / 終了済み${s.groupError?' / グループ情報要確認':''}</span></div><span class="fightNtBadge">未取得</span></div>`).join(''):'<div class="fightNtEmpty">指定期間に未取得の終了済みスクリムはありません。</div>';
+    $('fightNtList').querySelectorAll('.fightNtItem').forEach(el=>el.addEventListener('click',()=>selectScrim(el.dataset.key,el)));
+    setStatus(`${bases.length}件の終了済みスクリムを確認し、未取得${rows.length}件を表示しました。${errors.length?`\nグループ取得警告 ${errors.length}件：${errors.join(' / ')}`:''}`,errors.length?'bad':'good');
+  }catch(e){$('fightNtList').innerHTML='<div class="fightNtEmpty">取得失敗</div>';setStatus(`一覧取得に失敗しました。\n${e.message}`,'bad')}
+}
+function selectScrim(sourceKey,el){
+ state.selected=state.scrims.find(s=>s.sourceKey===sourceKey)||null;state.analysis=null;$('fightNtReflectBtn').disabled=true;
+ document.querySelectorAll('.fightNtItem').forEach(x=>x.classList.toggle('selected',x===el));el.querySelector('input').checked=true;
+ const sel=$('fightNtGroup'),groups=state.selected?.groupsData||[];state.groups=groups;
+ sel.innerHTML=groups.length?groups.map((g,i)=>`<option value="${esc(g.uuid)}">${esc(g.label||`Group ${i+1}`)}</option>`).join(''):'<option value="">グループ情報を取得できません</option>';
+ if(groups.length)setStatus(`選択：${ymd(state.selected.startAt)} ${displayType(state.selected)}${state.selected.block?` Block ${state.selected.block}`:''}\nGoogle Sheets URLを貼って「解析」を押してください。`,'good');
+ else setStatus(`選択したスクリムのグループ情報を取得できません。\nFIGHT NT Bridge v4を起動して一覧を再取得してください。`,'bad');
+}
+function parseCsv(text){const rows=[];let row=[],cell='',q=false;for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(q){if(c==='"'&&n==='"'){cell+='"';i++}else if(c==='"')q=false;else cell+=c}else if(c==='"')q=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell=''}else cell+=c}if(cell||row.length){row.push(cell);rows.push(row)}return rows}
+function sheetToLandmarks(csv){const rows=parseCsv(csv).map(r=>r.map(x=>String(x||'').trim()));let hi=rows.findIndex(r=>r.some(x=>/^draft$/i.test(x))&&r.some(x=>/^#|no\.?$/i.test(x)));if(hi<0)hi=rows.findIndex(r=>r.some(x=>/^draft$/i.test(x)));if(hi<0)throw new Error('Draftヘッダー行を見つけられません。');const h=rows[hi],draftI=h.findIndex(x=>/^draft$/i.test(x)),numI=Math.max(0,h.findIndex(x=>/^#|no\.?$/i.test(x)));const aliases={OL:'OL',OLYMPUS:'OL',ED:'ED','E-DISTRICT':'ED',SP:'SP','STORM POINT':'SP',WE:'WE',"WORLD'S EDGE":'WE'};const maps=[];h.forEach((x,i)=>{const k=aliases[x.toUpperCase()];if(k)maps.push({map:k,i})});if(!maps.length)throw new Error('MAP列を見つけられません。');const data=[];for(const r of rows.slice(hi+1)){const num=(r[numI]||'').match(/\d+/)?.[0];if(!num)continue;const rec={num,draft:r[draftI]||''};maps.forEach((m,mi)=>{const end=maps[mi+1]?.i??r.length;let poi='';for(let j=m.i;j<end;j++){const v=(r[j]||'').trim();if(v&&!/^\d+(\.\d+)?$/.test(v)&&v!==rec.draft){poi=v;break}}rec[m.map]=poi});data.push(rec)}if(!data.length)throw new Error('Draftデータ行を読み取れません。');const header=['#','Draft',...maps.map(x=>x.map)];return{data,maps:maps.map(x=>x.map),text:[header.join('\t'),...data.map(r=>[r.num,r.draft,...maps.map(x=>r[x.map]||'')].join('\t'))].join('\n')}}
+function bucketToRaw(game){const header=['team_name','team_num','player_name','character','placement','kills','assists','damage','shots','hits','accuracy','headshots','headshots_accuracy','survival_time'];const lines=[header.join('\t')];for(const t of game.teams||[]){const ps=(t.players&&t.players.length)?t.players:[{}];for(const p of ps)lines.push([t.team_name,t.team_num,p.player_name||'',p.character||p.charater||'',t.placement,p.kills??0,p.assists??0,p.damage??0,p.shots??0,p.hits??0,p.accuracy??0,p.headshots??0,p.headshots_accuracy??0,p.survival_time??0].join('\t'))}return lines.join('\n')}
+function canonicalMap(v){const s=String(v||'').toLowerCase().replace(/[^a-z]/g,'');if(s.includes('olympus'))return'Olympus';if(s.includes('stormpoint'))return'Storm Point';if(s.includes('edistrict'))return'E-District';if(s.includes('worldsedge'))return"World's Edge";return v||''}
+async function analyze(){
+ if(!state.selected)return setStatus('先にスクリムを選択してください。','bad');const groupUuid=$('fightNtGroup').value,url=$('fightNtSheetUrl').value.trim();if(!groupUuid)return setStatus('グループを選択してください。','bad');if(!url)return setStatus('Google Sheets URLを貼ってください。','bad');
+ setStatus('FIGHT NT結果とランドマーク表を取得・解析しています…');$('fightNtPreview').innerHTML='<div class="fightNtEmpty">解析中…</div>';
+ try{const [b,sheet]=await Promise.all([call('/bucket',{scrimUuid:state.selected.uuid,groupUuid}),call('/sheet',{url})]);const lm=sheetToLandmarks(sheet.csv||'');const bucket=b.data||{};const games=(bucket.games||[]).sort((a,b)=>a.game_num-b.game_num);if(!games.length)throw new Error('試合結果が0件です。');const allTeams=new Set(games.flatMap(g=>(g.teams||[]).map(t=>t.team_name)));const poiMissing=lm.data.filter(r=>lm.maps.some(m=>!r[m])).length;state.analysis={bucket,games,lm,groupUuid,sheetUrl:url,raws:games.map(bucketToRaw)};
+ const maps=[...new Set(games.map(g=>canonicalMap(g.map)))];$('fightNtSummary').innerHTML=[['試合',games.length],['チーム',allTeams.size],['Draft',lm.data.length],['POI欠損行',poiMissing]].map(([a,b])=>`<div class="fightNtMetric"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join('');
+ $('fightNtPreview').innerHTML=`<table><thead><tr><th>Match</th><th>MAP</th><th>チーム</th><th>順位</th><th>KP</th></tr></thead><tbody>${games.flatMap(g=>(g.teams||[]).map(t=>`<tr><td>${esc(g.game_num)}</td><td>${esc(canonicalMap(g.map))}</td><td>${esc(t.team_name)}</td><td>${esc(t.placement)}</td><td>${esc(t.kills)}</td></tr>`)).join('')}</tbody></table>`;
+ $('fightNtReflectBtn').disabled=false;setStatus(`解析完了。${games.length}試合、Draft ${lm.data.length}行を取得しました。\nMAP: ${maps.join(' / ')}\n登録前にプレビューと通常登録フォームを確認してください。`,'good')
+ }catch(e){state.analysis=null;$('fightNtReflectBtn').disabled=true;$('fightNtPreview').innerHTML='<div class="fightNtEmpty">解析失敗</div>';setStatus(`解析に失敗しました。\n${e.message}`,'bad')}
+}
+function setSelectValue(el,value){if(!el)return;const target=String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');const opt=[...el.options].find(o=>String(o.value||o.textContent).toLowerCase().replace(/[^a-z0-9]/g,'')===target)||[...el.options].find(o=>String(o.value||o.textContent).toLowerCase().replace(/[^a-z0-9]/g,'').includes(target));if(opt)el.value=opt.value}
+function installSaveMarker(w){if(w.__fightNtSaveMarkerV360)return;w.__fightNtSaveMarkerV360=true;const orig=w.addMatchSet;if(typeof orig!=='function')return;w.addMatchSet=function(){const before=(JSON.parse(localStorage.getItem('apexStatsMatchesV6')||'[]')||[]).length;const ret=orig.apply(this,arguments);setTimeout(()=>{const after=(JSON.parse(localStorage.getItem('apexStatsMatchesV6')||'[]')||[]).length,pending=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(pending&&after>before){const imported=readImported();imported[pending.sourceKey||pending.scrimUuid]={...pending,registeredAt:new Date().toISOString()};writeImported(imported);localStorage.removeItem(PENDING_KEY)}},30);return ret}
+}
+function reflect(){
+ const a=state.analysis;if(!a)return;ScrimRegisterAdmin.showTab('normal');const f=$('adminScrimRegisterFrame'),apply=()=>{try{const d=f.contentDocument,w=f.contentWindow;if(!d||!w)return false;const games=a.games;d.getElementById('metaDate').value=ymd(state.selected.startAt);setSelectValue(d.getElementById('metaBlock'),state.selected.block?`Block${state.selected.block}`:'');setSelectValue(d.getElementById('metaMapA'),canonicalMap(games[0]?.map));setSelectValue(d.getElementById('metaMapB'),canonicalMap(games[3]?.map||games.at(-1)?.map));d.getElementById('landmarkPaste').value=a.lm.text;for(let i=1;i<=6;i++){const el=d.getElementById('rawInput'+i);if(el)el.value=a.raws[i-1]||''}localStorage.setItem(PENDING_KEY,JSON.stringify({sourceKey:state.selected.sourceKey,scrimUuid:state.selected.uuid,block:state.selected.block,groupUuid:a.groupUuid,sheetUrl:a.sheetUrl,source:'fightnt'}));installSaveMarker(w);alert('通常登録フォームへ反映しました。\n内容を目視確認して、既存の「追加」を押してください。');return true}catch(e){console.error(e);return false}};if(!apply())setTimeout(()=>{if(!apply())alert('通常登録フォームの読み込み後、もう一度「反映」を押してください。')},250)
+}
+function clear(){state.analysis=null;$('fightNtSheetUrl').value='';$('fightNtSummary').innerHTML='';$('fightNtPreview').innerHTML='<div class="fightNtEmpty">解析結果はここに表示されます。</div>';$('fightNtReflectBtn').disabled=true;setStatus('入力をクリアしました。')}
+window.addEventListener('DOMContentLoaded',()=>{defaultDates();$('fightNtListBtn')?.addEventListener('click',loadList);$('fightNtAnalyzeBtn')?.addEventListener('click',analyze);$('fightNtReflectBtn')?.addEventListener('click',reflect);$('fightNtClearBtn')?.addEventListener('click',clear)});
+window.FightNtImportV360={show,loadList,analyze,reflect,clear};
+})();
+</script>
 </body>
 </html>
