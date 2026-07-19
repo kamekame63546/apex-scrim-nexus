@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APEX ORACLE 保存データ詳細診断</title>
+<style>
+:root{color-scheme:dark;--bg:#080d1a;--panel:#111a2d;--line:#2b3959;--text:#eef4ff;--muted:#a9b8d6;--orange:#f97316;--green:#22c55e;--red:#ef4444;--blue:#60a5fa;--gold:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:radial-gradient(circle at 10% 0,#18234a 0,var(--bg) 45%);color:var(--text)}
+main{max-width:1380px;margin:auto;padding:22px}
+h1{margin:0 0 6px;font-size:28px}
+.note{color:var(--muted);line-height:1.7;margin-bottom:16px}
+.warn{border:1px solid rgba(249,115,22,.55);background:rgba(249,115,22,.10);border-radius:14px;padding:12px 14px;margin-bottom:16px;line-height:1.65}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+button{height:38px;border:1px solid var(--line);border-radius:10px;background:#182540;color:#fff;padding:0 15px;font-weight:900;cursor:pointer}
+button.primary{background:linear-gradient(135deg,var(--orange),#c2410c);border-color:#fb923c}
+button:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}
+.metric span{display:block;color:var(--muted);font-size:12px;font-weight:800}
+.metric b{display:block;margin-top:5px;font-size:23px}
+.card{background:rgba(17,26,45,.96);border:1px solid var(--line);border-radius:16px;margin:12px 0;overflow:hidden}
+.card h2{font-size:17px;margin:0;padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.025)}
+.card .body{padding:12px;overflow:auto}
+table{border-collapse:collapse;width:100%;min-width:820px;font-size:12px}
+th,td{border-bottom:1px solid rgba(255,255,255,.075);padding:8px;text-align:left;vertical-align:top}
+th{color:#c7d6f4;background:#121d33;position:sticky;top:0}
+.ok{color:var(--green);font-weight:900}.bad{color:var(--red);font-weight:900}.warnText{color:var(--gold);font-weight:900}.muted{color:var(--muted)}
+pre{white-space:pre-wrap;word-break:break-word;background:#080f1e;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:420px;overflow:auto}
+#status{font-weight:900;color:var(--blue)}
+.tag{display:inline-flex;padding:3px 7px;border-radius:999px;border:1px solid var(--line);font-weight:900;font-size:11px}
+@media(max-width:980px){.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>APEX ORACLE 保存データ詳細診断</h1>
+<p class="note">このページは保存データを読み取るだけです。localStorage・IndexedDB・CacheStorage・Service Workerへの書き込み、変更、削除は行いません。</p>
+<div class="warn">
+<strong>重要:</strong> このファイルをGitHub Pagesの <code>index.html</code> と同じ場所へ <code>storage-diagnostic-v2.html</code> の名前で登録し、そのURLを開いてください。
+</div>
+
+<div class="actions">
+<button id="scanBtn" class="primary">詳細診断を実行</button>
+<button id="reportBtn" disabled>詳細診断JSONを保存</button>
+<button id="backupBtn" disabled>全データバックアップJSONを保存</button>
+</div>
+<div id="status">待機中</div>
+
+<div class="grid">
+<div class="metric"><span>localStorage使用量</span><b id="lsBytes">-</b></div>
+<div class="metric"><span>IndexedDB数</span><b id="dbCount">-</b></div>
+<div class="metric"><span>スクリムセット候補</span><b id="setCount">-</b></div>
+<div class="metric"><span>試合候補</span><b id="matchCount">-</b></div>
+<div class="metric"><span>日付範囲</span><b id="dateRange" style="font-size:16px">-</b></div>
+</div>
+
+<section class="card"><h2>apexStatsMatchesV6 詳細解析</h2><div class="body"><table><thead><tr><th>保存場所</th><th>DB</th><th>Store</th><th>キー</th><th>保存形式</th><th>トップレベル件数</th><th>推定スクリムセット</th><th>推定試合数</th><th>日付範囲</th><th>状態</th></tr></thead><tbody id="scrimBody"></tbody></table></div></section>
+
+<section class="card"><h2>Split・ルール別集計</h2><div class="body"><table><thead><tr><th>分類</th><th>値</th><th>件数</th></tr></thead><tbody id="groupBody"></tbody></table></div></section>
+
+<section class="card"><h2>トップレベル構造</h2><div class="body"><table><thead><tr><th>パス</th><th>型</th><th>件数</th><th>キー例</th><th>値の先頭</th></tr></thead><tbody id="shapeBody"></tbody></table></div></section>
+
+<section class="card"><h2>IndexedDB一覧</h2><div class="body"><table><thead><tr><th>DB</th><th>Version</th><th>Store</th><th>件数</th><th>推定容量</th><th>キー例</th><th>エラー</th></tr></thead><tbody id="idbBody"></tbody></table></div></section>
+
+<section class="card"><h2>診断ログ</h2><div class="body"><pre id="log"></pre></div></section>
+</main>
+
+<script>
+(()=>{"use strict";
+const $=id=>document.getElementById(id);
+const state={report:null,backup:null};
+const knownDbNames=["apexOracleDataV1","apexOracleDataV2","apexOracleData","apexLegendImages","apexLootRouteImagesV1","apexOracleAssets"];
+const fmt=n=>{if(!Number.isFinite(n))return "-";if(n<1024)return n+" B";if(n<1024*1024)return (n/1024).toFixed(1)+" KB";return (n/1024/1024).toFixed(2)+" MB"};
+const safeJson=s=>{try{return JSON.parse(s)}catch{return undefined}};
+const byteSize=v=>new Blob([typeof v==="string"?v:JSON.stringify(v)]).size;
+const log=(...a)=>{$("log").textContent+=a.map(x=>typeof x==="string"?x:JSON.stringify(x,null,2)).join(" ")+"\n"};
+const download=(name,obj)=>{const b=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)};
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function normalizeValue(value){
+  let v=value;
+  let depth=0;
+  while(typeof v==="string" && depth<3){
+    const parsed=safeJson(v);
+    if(parsed===undefined)break;
+    v=parsed;depth++;
+  }
+  return v;
+}
+function typeOf(v){return Array.isArray(v)?"array":v===null?"null":typeof v}
+function valuePreview(v){
+  try{
+    const s=typeof v==="string"?v:JSON.stringify(v);
+    return s.slice(0,220);
+  }catch{return "[表示不可]"}
+}
+function topCount(v){
+  if(Array.isArray(v))return v.length;
+  if(v&&typeof v==="object")return Object.keys(v).length;
+  return null;
+}
+function dateFromAny(v){
+  if(typeof v!=="string")return null;
+  const m=v.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(!m)return null;
+  return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+}
+function looksLikeMatchObject(x){
+  if(!x||typeof x!=="object"||Array.isArray(x))return false;
+  const keys=Object.keys(x).map(k=>k.toLowerCase());
+  const hasMatch=keys.some(k=>["match","matchno","matchnumber","game","gamenumber","matchindex"].includes(k));
+  const hasRows=keys.some(k=>["teams","rows","results","standings","entries","data"].includes(k));
+  const hasMeta=keys.some(k=>["date","block","map","split","rule","type","scrimid","scrimsetid"].includes(k));
+  return (hasMatch&&hasMeta)||(hasRows&&hasMeta);
+}
+function looksLikeScrimSet(x){
+  if(!x||typeof x!=="object"||Array.isArray(x))return false;
+  const keys=Object.keys(x).map(k=>k.toLowerCase());
+  const hasMeta=keys.some(k=>["date","block","split","rule","type","scrimid","scrimsetid","map"].includes(k));
+  const hasMatches=keys.some(k=>["matches","games","matchlist","results"].includes(k));
+  return hasMeta&&hasMatches;
+}
+function collectAnalysis(root){
+  const dates=new Set(),splits=new Map(),rules=new Map(),maps=new Map(),sets=[],matches=[];
+  const visited=new WeakSet();
+  function addGroup(map,val){
+    if(val==null||val==="")return;
+    const s=String(val);map.set(s,(map.get(s)||0)+1);
+  }
+  function walk(v,path,depth,parentKey){
+    if(depth>8||v==null)return;
+    if(typeof v==="string"){
+      const d=dateFromAny(v);if(d)dates.add(d);
+      return;
+    }
+    if(typeof v!=="object")return;
+    if(visited.has(v))return;visited.add(v);
+
+    if(looksLikeScrimSet(v))sets.push({path,value:v});
+    if(looksLikeMatchObject(v))matches.push({path,value:v});
+
+    for(const [k,val] of Object.entries(v)){
+      const kl=k.toLowerCase();
+      if(["date","scrimdate","matchdate","createdat","updatedat"].includes(kl)){
+        const d=dateFromAny(String(val));if(d)dates.add(d);
+      }
+      if(["split","splitname"].includes(kl))addGroup(splits,val);
+      if(["rule","type","scrimtype","format"].includes(kl))addGroup(rules,val);
+      if(["map","mapname"].includes(kl))addGroup(maps,val);
+      if(depth<8)walk(val,path?path+"."+k:k,depth+1,k);
+    }
+  }
+  walk(root,"root",0,"");
+  const dateArr=[...dates].sort();
+  return {
+    setCount:sets.length,
+    matchCount:matches.length,
+    dateRange:dateArr.length?`${dateArr[0]} ～ ${dateArr[dateArr.length-1]}`:"-",
+    dates:dateArr,
+    splits:Object.fromEntries([...splits.entries()].sort((a,b)=>b[1]-a[1])),
+    rules:Object.fromEntries([...rules.entries()].sort((a,b)=>b[1]-a[1])),
+    maps:Object.fromEntries([...maps.entries()].sort((a,b)=>b[1]-a[1]))
+  };
+}
+function describeShape(root){
+  const rows=[];
+  function push(path,v){
+    const t=typeOf(v),count=topCount(v);
+    let keys="";
+    if(v&&typeof v==="object"&&!Array.isArray(v))keys=Object.keys(v).slice(0,12).join(", ");
+    else if(Array.isArray(v)&&v.length&&v[0]&&typeof v[0]==="object")keys=Object.keys(v[0]).slice(0,12).join(", ");
+    rows.push({path,type:t,count,keys,preview:valuePreview(v)});
+  }
+  push("root",root);
+  if(root&&typeof root==="object"){
+    const entries=Array.isArray(root)?root.slice(0,8).map((v,i)=>[String(i),v]):Object.entries(root).slice(0,20);
+    for(const [k,v] of entries)push("root."+k,v);
+  }
+  return rows;
+}
+async function listDbNames(){
+  const names=new Set(knownDbNames);
+  if(indexedDB.databases){
+    try{for(const d of await indexedDB.databases())if(d&&d.name)names.add(d.name)}catch(e){log("indexedDB.databases()失敗:",e.message)}
+  }
+  return [...names];
+}
+function openExistingDb(name){
+ return new Promise(resolve=>{
+   let created=false;
+   const req=indexedDB.open(name);
+   req.onupgradeneeded=()=>{created=true;try{req.transaction.abort()}catch{}};
+   req.onsuccess=()=>{const db=req.result;if(created){db.close();resolve(null)}else resolve(db)};
+   req.onerror=()=>resolve(null);
+   req.onblocked=()=>resolve(null);
+ });
+}
+function getAllFromStore(db,storeName){
+ return new Promise(resolve=>{
+  try{
+   const tx=db.transaction(storeName,"readonly"),store=tx.objectStore(storeName);
+   const result={entries:[],error:null};
+   if(store.getAll&&store.getAllKeys){
+    const rv=store.getAll(),rk=store.getAllKeys();
+    let values,keys;
+    rv.onsuccess=()=>{values=rv.result;done()};rk.onsuccess=()=>{keys=rk.result;done()};
+    rv.onerror=()=>{result.error=rv.error?.message||"getAll失敗";resolve(result)};
+    rk.onerror=()=>{result.error=rk.error?.message||"getAllKeys失敗";resolve(result)};
+    function done(){if(values!==undefined&&keys!==undefined){result.entries=values.map((v,i)=>({key:keys[i],value:v}));resolve(result)}}
+   }else{
+    const cur=store.openCursor();
+    cur.onsuccess=e=>{const c=e.target.result;if(c){result.entries.push({key:c.key,value:c.value});c.continue()}else resolve(result)};
+    cur.onerror=()=>{result.error=cur.error?.message||"cursor失敗";resolve(result)};
+   }
+  }catch(e){resolve({entries:[],error:e.message})}
+ });
+}
+async function scan(){
+ $("scanBtn").disabled=true;$("reportBtn").disabled=true;$("backupBtn").disabled=true;
+ $("status").textContent="詳細診断中…";$("log").textContent="";
+ const report={createdAt:new Date().toISOString(),origin:location.origin,url:location.href,indexedDB:[],scrimSources:[],groups:[],shape:[],errors:[]};
+ const backup={app:"APEX ORACLE",kind:"read-only-storage-backup-v2",createdAt:report.createdAt,origin:location.origin,localStorage:{},indexedDB:{}};
+ let totalLs=0,totalSets=0,totalMatches=0,globalDates=[];
+
+ try{
+   for(let i=0;i<localStorage.length;i++){
+     const key=localStorage.key(i); if(key==null)continue;
+     const raw=localStorage.getItem(key);
+     totalLs+=byteSize(raw||"");
+     backup.localStorage[key]=safeJson(raw)??raw;
+     if(key==="apexStatsMatchesV6"){
+       const root=normalizeValue(raw);
+       const a=collectAnalysis(root);
+       report.scrimSources.push({location:"localStorage",db:"-",store:"-",key,rawType:typeOf(raw),normalizedType:typeOf(root),topCount:topCount(root),bytes:byteSize(raw||""),analysis:a,status:(raw&&raw.includes("__apexIndexedDB"))?"参照マーカー":"実データ候補"});
+       report.shape.push(...describeShape(root).map(x=>({...x,source:"localStorage"})));
+     }
+   }
+ }catch(e){report.errors.push("localStorage: "+e.message)}
+
+ const dbNames=await listDbNames();
+ for(const name of dbNames){
+   let db=null;
+   try{
+     db=await openExistingDb(name); if(!db)continue;
+     const dbReport={name,version:db.version,stores:[]};
+     backup.indexedDB[name]={version:db.version,stores:{}};
+     for(const storeName of [...db.objectStoreNames]){
+       const data=await getAllFromStore(db,storeName);
+       let bytes=0;for(const e of data.entries)try{bytes+=byteSize(e.value)}catch{}
+       dbReport.stores.push({name:storeName,count:data.entries.length,bytes,keys:data.entries.slice(0,10).map(x=>String(x.key)),error:data.error});
+       backup.indexedDB[name].stores[storeName]=data.entries;
+       for(const entry of data.entries){
+         if(String(entry.key)==="apexStatsMatchesV6"){
+           const root=normalizeValue(entry.value);
+           const a=collectAnalysis(root);
+           totalSets+=a.setCount; totalMatches+=a.matchCount; globalDates.push(...a.dates);
+           report.scrimSources.push({location:"IndexedDB",db:name,store:storeName,key:String(entry.key),rawType:typeOf(entry.value),normalizedType:typeOf(root),topCount:topCount(root),bytes:byteSize(entry.value),analysis:a,status:a.setCount||a.matchCount?"実データあり":"構造要確認"});
+           report.shape.push(...describeShape(root).map(x=>({...x,source:`${name}/${storeName}`})));
+           for(const [kind,obj] of [["Split",a.splits],["ルール",a.rules],["MAP",a.maps]])for(const [value,count] of Object.entries(obj))report.groups.push({kind,value,count,source:name});
+         }
+       }
+     }
+     report.indexedDB.push(dbReport);
+     db.close();
+   }catch(e){report.errors.push("IndexedDB "+name+": "+e.message);try{db&&db.close()}catch{}}
+ }
+ globalDates=[...new Set(globalDates)].sort();
+ report.summary={localStorageBytes:totalLs,indexedDBCount:report.indexedDB.length,totalSets,totalMatches,dateRange:globalDates.length?`${globalDates[0]} ～ ${globalDates[globalDates.length-1]}`:"-"};
+ state.report=report;state.backup=backup;
+ render(report);
+ $("status").textContent="詳細診断完了。データへの書き込み・削除は行っていません。";
+ $("reportBtn").disabled=false;$("backupBtn").disabled=false;$("scanBtn").disabled=false;
+}
+function render(r){
+ $("lsBytes").textContent=fmt(r.summary.localStorageBytes);
+ $("dbCount").textContent=r.summary.indexedDBCount;
+ $("setCount").textContent=r.summary.totalSets;
+ $("matchCount").textContent=r.summary.totalMatches;
+ $("dateRange").textContent=r.summary.dateRange;
+
+ $("scrimBody").innerHTML=r.scrimSources.length?r.scrimSources.map(x=>`<tr>
+ <td>${esc(x.location)}</td><td>${esc(x.db)}</td><td>${esc(x.store)}</td><td>${esc(x.key)}</td>
+ <td>${esc(x.rawType)} → ${esc(x.normalizedType)}</td><td>${x.topCount??"-"}</td>
+ <td>${x.analysis.setCount}</td><td>${x.analysis.matchCount}</td><td>${esc(x.analysis.dateRange)}</td>
+ <td class="${x.status.includes("あり")?"ok":x.status.includes("参照")?"warnText":"bad"}">${esc(x.status)}</td></tr>`).join("")
+ :`<tr><td colspan="10" class="bad">apexStatsMatchesV6を検出できませんでした</td></tr>`;
+
+ $("groupBody").innerHTML=r.groups.length?r.groups.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.value)}</td><td>${x.count}</td></tr>`).join("")
+ :`<tr><td colspan="3" class="muted">分類情報を検出できませんでした</td></tr>`;
+
+ $("shapeBody").innerHTML=r.shape.length?r.shape.map(x=>`<tr><td>${esc(x.source+" :: "+x.path)}</td><td>${esc(x.type)}</td><td>${x.count??"-"}</td><td>${esc(x.keys)}</td><td>${esc(x.preview)}</td></tr>`).join("")
+ :`<tr><td colspan="5" class="muted">構造情報なし</td></tr>`;
+
+ const idbRows=[];
+ for(const db of r.indexedDB){
+   if(!db.stores.length)idbRows.push(`<tr><td>${esc(db.name)}</td><td>${db.version}</td><td colspan="5" class="muted">Storeなし</td></tr>`);
+   for(const s of db.stores)idbRows.push(`<tr><td>${esc(db.name)}</td><td>${db.version}</td><td>${esc(s.name)}</td><td>${s.count}</td><td>${fmt(s.bytes)}</td><td>${esc(s.keys.join(", "))}</td><td>${esc(s.error||"")}</td></tr>`)
+ }
+ $("idbBody").innerHTML=idbRows.join("")||`<tr><td colspan="7" class="bad">IndexedDBを検出できませんでした</td></tr>`;
+ log("Summary:",r.summary);
+ log("Scrim sources:",r.scrimSources);
+ log("Groups:",r.groups);
+ if(r.errors.length)log("Errors:",r.errors);
+}
+$("scanBtn").addEventListener("click",scan);
+$("reportBtn").addEventListener("click",()=>download("apex-oracle-detailed-storage-report-"+new Date().toISOString().replace(/[:.]/g,"-")+".json",state.report));
+$("backupBtn").addEventListener("click",()=>download("apex-oracle-full-storage-backup-v2-"+new Date().toISOString().replace(/[:.]/g,"-")+".json",state.backup));
+})();
+</script>
+</body>
+</html>
