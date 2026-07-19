@@ -101,16 +101,26 @@
     if(localCount>=0&&oldCount>=0)cache=oldCount>localCount?oldRaw:localRaw;
     else if(oldCount>=0)cache=oldRaw;
     else if(localCount>=0)cache=localRaw;
-    else cache="[]";
+    else cache=null;
 
-    native.set.call(localStorage,KEY,cache);
+    if(cache!==null){
+      native.set.call(localStorage,KEY,cache);
+    }
     ready=true;
     bridgeAll();
     window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:cache}));
-    window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"localstorage-scrim-restore-v1"}}));
+    window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"localstorage-scrim-restore-v2"}}));
     window.dispatchEvent(new CustomEvent("apex:storage-ready"));
-    console.info("[APEX ORACLE] スクリム保存方式をlocalStorageへ復旧しました",{localMatches:localCount,indexedDbMatches:oldCount,restoredMatches:count(cache)});
-    return true;
+    const restored=count(cache);
+    console.info("[APEX ORACLE] スクリムデータ復旧結果",{localMatches:localCount,indexedDbMatches:oldCount,restoredMatches:restored});
+    setTimeout(()=>{
+      if(restored>=0){
+        alert("スクリムデータを復旧しました。\n復旧件数: "+restored+"件\n\nこの画面を一度再読み込みしてください。");
+      }else{
+        alert("このファイルの保存領域には旧データが見つかりませんでした。\n\n旧 index(141).html を使用していた同じフォルダ・同じファイル名に、このファイルを上書きして開いてください。ファイル名や場所が変わると、ブラウザから別の保存領域として扱われることがあります。\n\nIndexedDB自体は削除していません。");
+      }
+    },300);
+    return restored>=0;
   }
 
   const parse=(raw,fallback=null)=>{try{return raw==null?fallback:JSON.parse(raw)}catch(_){return fallback}};
