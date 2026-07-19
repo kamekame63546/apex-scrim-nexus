@@ -68,6 +68,13 @@
    return true;
  }
  initPromise=init().catch(e=>{console.error("[APEX ORACLE] スクリムIndexedDB初期化失敗",e);const raw=native.get.call(localStorage,KEY);if(raw&&raw!==MARKER){cache=raw;ready=true}throw e});
+ function announceReady(){
+   try{window.dispatchEvent(new CustomEvent("apex:scrim-idb-ready",{detail:{key:KEY,bytes:cache?new Blob([cache]).size:0}}))}catch(_){}
+ }
+ initPromise.then(()=>{
+   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(announceReady,0),{once:true});
+   else setTimeout(announceReady,0);
+ }).catch(()=>{});
  function bridgeFrame(frame){try{const w=frame?.contentWindow;if(!w||w===window||w.__apexScrimIdbBridgeV2)return;const proto=w.Storage?.prototype;if(!proto)return;w.__apexScrimIdbBridgeV2=true;const g=proto.getItem,s=proto.setItem,r=proto.removeItem;proto.getItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.getItem(KEY);return g.call(this,key)};proto.setItem=function(key,value){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.setItem(KEY,value);return s.call(this,key,value)};proto.removeItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.removeItem(KEY);return r.call(this,key)}}catch(e){console.warn("[APEX ORACLE] iframe保存ブリッジ設定失敗",e)}}
  function bridgeAll(){document.querySelectorAll("iframe").forEach(bridgeFrame)}
  document.addEventListener("load",e=>{if(e.target?.tagName==="IFRAME")bridgeFrame(e.target)},true);
@@ -5383,6 +5390,43 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
   console.info("[APEX ORACLE] スクリムクリック追跡 v2 を有効化しました");
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,300),{once:true});else setTimeout(install,300);
+})();
+</script>
+
+<script id="apex-idb-hydration-v3">
+(()=>{"use strict";
+ let hydrated=false;
+ function safe(fn){try{return fn()}catch(e){console.warn("[APEX ORACLE] IndexedDB再表示処理失敗",e)}}
+ function reloadFrame(id){
+   const frame=document.getElementById(id);if(!frame)return;
+   safe(()=>window.ApexScrimIndexedDB?.bridgeFrame?.(frame));
+   safe(()=>frame.contentWindow?.location?.reload());
+ }
+ function hydrate(){
+   if(hydrated)return;hydrated=true;
+   safe(()=>window.ApexScrimIndexedDB?.bridgeAll?.());
+   safe(()=>window.ScrimSavedList?.render?.());
+   safe(()=>window.HomeApp?.render?.());
+   safe(()=>window.MetaAnalysisApp?.render?.());
+   safe(()=>window.Phase2RankingTeamBridgeV341?.scan?.());
+   safe(()=>window.ApexPhase3Core?.refresh?.("indexeddb-ready"));
+   ["frameScrim","adminScrimRegisterFrame","adminScrimTeamFrame"].forEach(reloadFrame);
+   setTimeout(()=>{
+     safe(()=>window.ScrimSavedList?.render?.());
+     safe(()=>window.HomeApp?.render?.());
+     safe(()=>window.Phase2RankingTeamBridgeV341?.scan?.());
+     safe(()=>window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"indexeddb-hydrated"}})));
+     console.info("[APEX ORACLE] IndexedDBのスクリムデータを一覧・ランキングへ再反映しました");
+   },350);
+ }
+ window.addEventListener("apex:scrim-idb-ready",hydrate,{once:true});
+ function start(){
+   const status=window.ApexScrimIndexedDB?.status?.();
+   if(status?.ready)hydrate();
+   else window.ApexScrimIndexedDB?.ready?.().then(hydrate).catch(e=>console.error("[APEX ORACLE] IndexedDB再表示準備失敗",e));
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
+ window.ApexScrimHydrationV3={hydrate,status:()=>({hydrated,idb:window.ApexScrimIndexedDB?.status?.()})};
 })();
 </script>
 </body>
