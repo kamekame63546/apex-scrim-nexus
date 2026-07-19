@@ -68,10 +68,10 @@
    if(active("scrimRegisterPanel"))await call("ScrimSavedList",["render","refresh"]);
    if(active("zoneOverviewPanel"))await call("ZoneOverviewApp",["render","refresh"]);
    if(active("ringConsolePanel")){await call("RingConsoleApp",["render","refresh"]);await call("RingConsoleCleanV164",["renderApp","render"])}
-   if(active("rankingPanel"))await call("RankingApp",["render","refresh"]);
-   if(active("teamAnalysisPanel"))await call("TeamAnalysisApp",["render","refresh"]);
+   const scrimFrame=document.getElementById("frameScrim");
+   if(scrimFrame?.classList.contains("active"))await call("Phase2RankingTeamBridgeV341",["refresh","scan"]);
    if(active("metaAnalysisPanel"))await call("MetaAnalysisApp",["render","refresh"]);
-   if(active("compositionSimulatorPanel")){window.compositionAnalysisData=null;try{window.CompositionSimulatorV2?.query?.()}catch(_){}}
+   if(active("compositionSimulatorPanel")){window.compositionAnalysisData=null;try{await window.CompositionSimulator?.query?.()}catch(error){console.warn("[APEX ORACLE] 構成シミュレーター更新失敗",error)}}
    try{window.ApexRuntimeV280?.refresh?.()}catch(_){}
    window.dispatchEvent(new CustomEvent("apex:render-complete",{detail:{source:"visible-router-v353",reason}}));
   }finally{running=false;if(pendingReason){const next=pendingReason;pendingReason="";schedule(next)}}
@@ -3749,20 +3749,70 @@ window.ScrimDataV340={allGames,refresh,ready:()=>refreshPromise,normalizeGame,no
 refreshPromise=refresh({split:currentSplit()}).then(()=>{const r=diagnose();if(!r.ok)console.warn("Phase2 data diagnostic",r);return cachedGames.slice()});
 })();</script>
 <script id="phase2-ranking-team-bridge-v341">(()=>{"use strict";
-const CORE=()=>window.ApexDataCore;
-const norm=v=>String(v??"").normalize("NFKC").trim().toLowerCase().replace(/[‐‑‒–—―−ーｰ]/g,"-").replace(/[’'`´]/g,"").replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");
 const text=v=>String(v??"").trim();
-const canonicalMap=v=>{const n=norm(v);if(/stormpoint|^sp$/.test(n))return"Storm Point";if(/olympus|^ol$/.test(n))return"Olympus";if(/worldsedge|worldedge|^we$/.test(n))return"World's Edge";if(/edistrict|district|^ed$/.test(n))return"E-District";return text(v)};
-function currentSplit(){try{return text(window.IntegratedSplit?.current?.()||CORE()?.readJSON?.("apexV62Clean",{},{}).current||"")}catch(_){return""}}
-function registeredKeys(split=currentSplit()){const st=CORE()?.readJSON?.("apexV62Clean",{}, {validate:v=>!!v&&typeof v==="object"&&!Array.isArray(v)})||{};return new Set((Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[]).map(norm).filter(Boolean))}
-function cleanRow(row,keys){const team=text(row?.team_name??row?.team??row?.teamName??row?.name),poi=text(row?.poi??row?.landmark??row?.poi_name??row?.poiName??row?.draft_poi??row?.dropSpot).replace(/^poi[_\s-]*id[:：]?\s*/i,"");const registered=!team||keys.has(norm(team));return{...row,team_name:team||row?.team_name,map:canonicalMap(row?.map),poi:poi||row?.poi,landmark:poi||row?.landmark,team_registry_status:registered?"registered":"unregistered",unregistered_team:!registered,exclude_from_stats:!registered||row?.exclude_from_stats===true}}
-function cleanRows(rows){const keys=registeredKeys();return(Array.isArray(rows)?rows:[]).map(r=>cleanRow(r,keys)).filter(r=>!r.exclude_from_stats)}
-function patchFrame(frame){try{if(!frame||frame.dataset.phase2BridgeV341==="1")return;const d=frame.contentDocument,w=frame.contentWindow;if(!d||!w||!d.getElementById("dashboardPage")||!d.getElementById("teamDetailPage"))return;frame.dataset.phase2BridgeV341="1";w.parentPhase2CleanRowsV341=cleanRows;w.eval(`(()=>{if(window.__phase2RankingTeamV341)return;window.__phase2RankingTeamV341=true;const clean=()=>{try{return parent.parentPhase2CleanRowsV341(rows)}catch(e){console.warn('phase2 clean rows failed',e);return Array.isArray(rows)?rows:[]}};const wrap=name=>{try{const original=eval(name);if(typeof original!=='function'||original.__phase2V341)return;const wrapped=function(...args){const before=rows;try{rows=clean();return original.apply(this,args)}finally{rows=before}};wrapped.__phase2V341=true;eval(name+'=wrapped')}catch(e){console.warn('phase2 wrap failed',name,e)}};wrap('renderDashboard');wrap('renderTeamDetail');const originalRefresh=typeof refreshAll==='function'?refreshAll:null;if(originalRefresh&&!originalRefresh.__phase2V341){const wrappedRefresh=function(...args){const result=originalRefresh.apply(this,args);try{renderTeamDetail();renderDashboard()}catch(e){console.warn('phase2 refresh render failed',e)}return result};wrappedRefresh.__phase2V341=true;refreshAll=wrappedRefresh}try{renderTeamDetail();renderDashboard()}catch(e){console.warn('phase2 initial render failed',e)}})();`);CORE()?.audit?.("phase2-ranking-team-bridge",{status:"patched"})}catch(e){console.warn("phase2 frame bridge failed",e)}}
-function scan(){document.querySelectorAll("iframe").forEach(patchFrame)}
-document.querySelectorAll("iframe").forEach(f=>f.addEventListener("load",()=>setTimeout(()=>patchFrame(f),80)));
-window.addEventListener("storage",()=>setTimeout(scan,90));
-"loading"===document.readyState?document.addEventListener("DOMContentLoaded",()=>setTimeout(scan,180),{once:true}):setTimeout(scan,180);
-window.parentPhase2CleanRowsV341=cleanRows;window.Phase2RankingTeamBridgeV341={scan,cleanRows,registeredKeys};
+const currentSplit=()=>text(window.IntegratedSplit?.current?.()||document.getElementById("globalSplitSelect")?.value||"");
+const frame=()=>document.getElementById("frameScrim");
+let token=0,loading=null,lastSplit="",lastCount=-1;
+async function readRows(split=currentSplit()){
+  await window.ApexScrimDB?.ready?.();
+  const rows=split?await window.ApexScrimDB?.getBySplitAsync?.(split):await window.ApexScrimDB?.getAll?.();
+  return Array.isArray(rows)?rows:[];
+}
+function installApi(w){
+  if(!w||w.__apexIndexedDbFrameBridgeV354)return;
+  w.__apexIndexedDbFrameBridgeV354=true;
+  w.ApexIndexedDbFrameV354={
+    async refresh(){return refresh({force:true})},
+    get split(){return lastSplit},
+    get count(){return lastCount}
+  };
+}
+function applyToFrame(rows,split){
+  const f=frame(),w=f?.contentWindow,d=f?.contentDocument;
+  if(!w||!d?.documentElement)return false;
+  installApi(w);
+  const safe=typeof structuredClone==="function"?structuredClone(rows):JSON.parse(JSON.stringify(rows));
+  w.__apexIndexedScrimRowsV354=safe;
+  try{
+    w.eval(`(()=>{try{
+      const incoming=Array.isArray(window.__apexIndexedScrimRowsV354)?window.__apexIndexedScrimRowsV354:[];
+      allMatches=incoming.map(match=>({...match,rows:Array.isArray(match.rows)?match.rows.map(row=>({...row})):[]}));
+      matches=typeof splitMatches==='function'?splitMatches(allMatches):allMatches.slice();
+      rows=typeof selectedRows==='function'?selectedRows():matches.flatMap(match=>Array.isArray(match.rows)?match.rows:[]);
+      if(typeof rebuildAndRender==='function')rebuildAndRender();
+      if(typeof renderMatchList==='function')renderMatchList();
+      if(typeof renderRegisterSetList==='function')renderRegisterSetList();
+      if(typeof renderTeamPanel==='function')renderTeamPanel();
+      if(typeof renderTeamDetail==='function')renderTeamDetail();
+      if(typeof renderDashboard==='function')renderDashboard();
+      if(typeof renderMetaAnalysis==='function')renderMetaAnalysis();
+      window.dispatchEvent(new CustomEvent('apex:frame-scrims-ready',{detail:{split:${JSON.stringify(split)},count:incoming.length}}));
+    }catch(error){console.error('[APEX ORACLE] iframe IndexedDB反映失敗',error)}})();`);
+    return true;
+  }catch(error){console.error("[APEX ORACLE] iframeスクリム反映失敗",error);return false}
+}
+async function refresh({force=false}={}){
+  const split=currentSplit();
+  if(loading&&!force)return loading;
+  const run=++token;
+  loading=(async()=>{
+    const rows=await readRows(split);
+    if(run!==token)return rows;
+    lastSplit=split;lastCount=rows.length;
+    if(!applyToFrame(rows,split))setTimeout(()=>{if(run===token)applyToFrame(rows,split)},100);
+    return rows;
+  })().catch(error=>{console.error("[APEX ORACLE] ランキング・チーム分析読込失敗",error);return[]}).finally(()=>{loading=null});
+  return loading;
+}
+let timer=0;function schedule(force=false,delay=40){clearTimeout(timer);timer=setTimeout(()=>refresh({force}).catch(()=>{}),delay)}
+const bind=()=>{const f=frame();if(!f||f.dataset.indexedDbFrameBridgeV354==="1")return;f.dataset.indexedDbFrameBridgeV354="1";f.addEventListener("load",()=>schedule(true,30))};
+document.addEventListener("click",event=>{const tab=event.target.closest?.('.pageTab[data-app="scrim"]');if(tab)schedule(false,50)},true);
+document.addEventListener("change",event=>{if(event.target?.id==="globalSplitSelect")schedule(true,20)},true);
+window.addEventListener("apex:indexeddb-scrims-saved",()=>schedule(true,30));
+window.addEventListener("apex:storage-ready",()=>schedule(true,50));
+window.addEventListener("apex:scrims-direct-ready",()=>schedule(true,30));
+window.Phase2RankingTeamBridgeV341={scan:()=>schedule(true,0),refresh,applyToFrame,getState:()=>({split:lastSplit,count:lastCount,loading:!!loading})};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{bind();schedule(true,80)},{once:true});else{bind();schedule(true,80)}
 })();</script>
 <script id="phase2-data-core-correction-v341">(()=>{"use strict";
 const API=()=>window.ScrimDataV340,CORE=()=>window.ApexDataCore;
@@ -5590,7 +5640,7 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  const isTargetPage=()=>{
    const active=document.querySelector('.pageTab.active');
    const page=active?.dataset?.page||"";
-   return page==="analysisPage"||page==="teamDetailPage";
+   return page==="analysisPage"||page==="teamDetailPage"||page==="dashboardPage";
  };
  function setBusy(on){
    const frame=document.getElementById("frameScrim");
@@ -5635,7 +5685,7 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  }
  let timer=0;
  function schedule(force=false){clearTimeout(timer);timer=setTimeout(()=>{if(isTargetPage()||force)refresh({force}).catch(()=>{})},50)}
- document.addEventListener("click",e=>{const tab=e.target.closest?.('.pageTab[data-page="analysisPage"],.pageTab[data-page="teamDetailPage"]');if(tab)schedule(false)},true);
+ document.addEventListener("click",e=>{const tab=e.target.closest?.('.pageTab[data-page="analysisPage"],.pageTab[data-page="teamDetailPage"],.pageTab[data-page="dashboardPage"]');if(tab)schedule(false)},true);
  window.addEventListener("apex:indexeddb-scrims-saved",()=>{state.rows=[];schedule(true)});
  window.addEventListener("apex:storage-ready",()=>schedule(isTargetPage()));
  window.addEventListener("apex:scrims-direct-ready",()=>schedule(isTargetPage()));
