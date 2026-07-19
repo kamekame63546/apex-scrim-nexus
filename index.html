@@ -2017,72 +2017,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
  select{width:100%;height:24px;padding:0 7px;border:1px solid var(--line);border-radius:8px;background:#0b1223;color:var(--text);font-size:10.5px;text-align:center}
  #teamPanel{display:grid;gap:2px}.teamRow{display:grid;grid-template-columns:22px minmax(84px,1.15fr) minmax(55px,.72fr) minmax(55px,.72fr) 24px 24px 24px 24px;gap:3px;min-height:21px;padding:2px 4px;border:1px solid rgba(255,255,255,.065);border-radius:7px;background:rgba(255,255,255,.025);font-size:9.8px;line-height:1.02;align-items:center;text-align:center}
  .teamHead{background:var(--head);color:#bfd0f3;font-size:9.4px;font-weight:900}.teamRow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:18px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;color:var(--muted);font-size:11px;text-align:center}
- </style></head><body><div class="wrap"><div class="sortbar"><div><div class="label">表示</div><div class="context" id="teamContext">登録済みスクリムを選択してください</div></div><label class="label">並び替え<select id="integratedTeamSort"><option value="rankAsc" selected>Place順</option><option value="num">番号順</option><option value="name">チーム名順</option><option value="tpDesc">TP高い順</option><option value="kpDesc">KP高い順</option><option value="ppDesc">PP高い順</option></select></label></div><div id="teamPanel"><div class="empty">登録済みスクリムを選択してください。</div></div></div>
-
-<script id="team-registration-persistence-fix-v354">
-(()=>{"use strict";
- const KEY="apexV62Clean";
- const clean=v=>String(v??"").normalize("NFKC").trim().replace(/\s+/g," ");
- const uniq=values=>{const out=[],seen=new Set;for(const raw of Array.isArray(values)?values:[]){const value=clean(raw),key=value.toLocaleLowerCase();if(!value||seen.has(key))continue;seen.add(key);out.push(value)}return out.sort((a,b)=>a.localeCompare(b,"ja",{numeric:true,sensitivity:"base"}))};
- function read(){
-  const core=window.ApexDataCore;
-  const st=core?.readJSON?.(KEY,{}, {validate:v=>!!v&&typeof v==="object"&&!Array.isArray(v)})||(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){return{}}})();
-  st.splits=st.splits&&typeof st.splits==="object"&&!Array.isArray(st.splits)?st.splits:{};
-  st.current=st.current&&Object.prototype.hasOwnProperty.call(st.splits,st.current)?st.current:(window.IntegratedSplit?.current?.()||Object.keys(st.splits)[0]||"");
-  if(st.current&&!st.splits[st.current])st.splits[st.current]=[];
-  st.teamMaster=uniq(st.teamMaster||[]);
-  st.splitTeams=st.splitTeams&&typeof st.splitTeams==="object"&&!Array.isArray(st.splitTeams)?st.splitTeams:{};
-  for(const split of Object.keys(st.splits))st.splitTeams[split]=uniq(st.splitTeams[split]||[]);
-  st.teams=uniq(st.splitTeams[st.current]||[]);
-  return st;
- }
- function write(st,reason){
-  st.teamMaster=uniq(st.teamMaster||[]);
-  for(const split of Object.keys(st.splitTeams||{}))st.splitTeams[split]=uniq(st.splitTeams[split]||[]);
-  st.teams=uniq(st.splitTeams?.[st.current]||[]);
-  if(window.ApexDataCore?.transaction)window.ApexDataCore.transaction({[KEY]:st},{reason});
-  else localStorage.setItem(KEY,JSON.stringify(st));
- }
- function refresh(){
-  try{window.AdminReg?.render?.()}catch(_){}
-  try{window.SplitMasterManager?.render?.()}catch(_){}
-  try{window.MasterDataListV231?.run?.()}catch(_){}
-  try{window.TeamNameMigrationV1?.render?.()}catch(_){}
-  try{window.HomeApp?.populateOwnTeamSelect?.()}catch(_){}
-  window.dispatchEvent(new CustomEvent("apex:local-data-changed",{detail:{source:"team-registration",reason:"team-master-add"}}));
- }
- function addTeam(){
-  const input=document.getElementById("adminNewTeam");
-  const name=clean(input?.value);
-  if(!name)return false;
-  const st=read(),split=st.current;
-  if(!split){alert("対象Splitを選択してください。");return false}
-  st.teamMaster=uniq([...st.teamMaster,name]);
-  st.splitTeams[split]=uniq([...(st.splitTeams[split]||[]),name]);
-  st.teams=[...st.splitTeams[split]];
-  write(st,"team-registration-add-v354");
-  const verify=read();
-  if(!verify.teamMaster.includes(name)||!(verify.splitTeams?.[split]||[]).includes(name)){
-   alert("チーム登録の保存確認に失敗しました。ページを再読み込みせず、そのまま操作を止めてください。");
-   return false;
-  }
-  if(input)input.value="";
-  refresh();
-  return true;
- }
- function install(){
-  if(!window.AdminReg||window.AdminReg.__teamPersistenceV354)return;
-  const original=window.AdminReg.add?.bind(window.AdminReg);
-  window.AdminReg.add=function(type){if(type==="team")return addTeam();return original?.(type)};
-  window.AdminReg.__teamPersistenceV354=true;
-  refresh();
- }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,0),{once:true});else setTimeout(install,0);
- window.TeamRegistrationPersistenceV354={add:addTeam,read,refresh,install};
-})();
-</script>
-
-</body></html>`;
+ </style></head><body><div class="wrap"><div class="sortbar"><div><div class="label">表示</div><div class="context" id="teamContext">登録済みスクリムを選択してください</div></div><label class="label">並び替え<select id="integratedTeamSort"><option value="rankAsc" selected>Place順</option><option value="num">番号順</option><option value="name">チーム名順</option><option value="tpDesc">TP高い順</option><option value="kpDesc">KP高い順</option><option value="ppDesc">PP高い順</option></select></label></div><div id="teamPanel"><div class="empty">登録済みスクリムを選択してください。</div></div></div></body></html>`;
  if(!teamLoaded||!f.contentDocument?.getElementById("teamPanel")){
   teamLoaded=true;
   f.srcdoc=shell;
