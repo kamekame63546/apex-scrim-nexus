@@ -1,84 +1,121 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><script id="apex-idb-scrim-storage-v1">
+<head><script id="apex-localstorage-scrim-restore-v1">
 (()=>{"use strict";
   const KEY="apexStatsMatchesV6";
-  const MARKER='{"__apexIndexedDB":true,"version":1}';
-  const DB_NAME="apexOracleDataV1";
+  const OLD_DB="apexOracleDataV1";
   const STORE="keyValue";
+  const MARKER='{"__apexIndexedDB":true,"version":1}';
   const native={
     get:Storage.prototype.getItem,
     set:Storage.prototype.setItem,
-    remove:Storage.prototype.removeItem,
-    clear:Storage.prototype.clear
+    remove:Storage.prototype.removeItem
   };
-  let cache=null, ready=false, marker=false, dbPromise=null, writeChain=Promise.resolve();
-  const isLocal=ctx=>ctx===window.localStorage;
-  const openDb=()=>dbPromise||(dbPromise=new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
+  let cache=null;
+  let ready=false;
+  let initPromise=null;
+
+  const isLocal=(ctx,key)=>ctx===window.localStorage&&String(key)===KEY;
+  const validArrayText=value=>{
+    if(typeof value!=="string")return false;
+    try{return Array.isArray(JSON.parse(value));}catch(_){return false;}
+  };
+  const count=value=>{
+    if(!validArrayText(value))return -1;
+    try{return JSON.parse(value).length;}catch(_){return -1;}
+  };
+  const openOldDb=()=>new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window))return resolve(null);
+    const req=indexedDB.open(OLD_DB,1);
     req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error("IndexedDBを開けませんでした"));
-    req.onblocked=()=>reject(new Error("IndexedDBが他のタブで使用中です"));
-  }));
-  const idbGet=async key=>{const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readonly"),req=tx.objectStore(STORE).get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||tx.error)})};
-  const idbPut=async(key,value)=>{const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error("IndexedDB保存が中断されました"))})};
-  const idbDelete=async key=>{const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error)})};
-  const persist=value=>{writeChain=writeChain.then(()=>idbPut(KEY,value)).catch(e=>{console.error("[APEX ORACLE] スクリムIndexedDB保存失敗",e);alert("スクリムデータのIndexedDB保存に失敗しました。\n"+(e?.message||e))});return writeChain};
+    req.onerror=()=>reject(req.error||new Error("旧IndexedDBを開けませんでした"));
+    req.onblocked=()=>reject(new Error("旧IndexedDBが別タブで使用中です"));
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE);
+    };
+  });
+  const readOldData=async()=>{
+    const db=await openOldDb();
+    if(!db)return null;
+    return new Promise((resolve,reject)=>{
+      if(!db.objectStoreNames.contains(STORE)){resolve(null);return;}
+      const tx=db.transaction(STORE,"readonly");
+      const req=tx.objectStore(STORE).get(KEY);
+      req.onsuccess=()=>resolve(req.result??null);
+      req.onerror=()=>reject(req.error||tx.error);
+    });
+  };
+
   Storage.prototype.getItem=function(key){
-    if(isLocal(this)&&String(key)===KEY){
+    if(isLocal(this,key)){
       if(cache!==null)return cache;
       const raw=native.get.call(this,KEY);
-      if(raw&&raw!==MARKER&&!raw.includes('"__apexIndexedDB"'))return raw;
-      return "[]";
+      return validArrayText(raw)?raw:"[]";
     }
     return native.get.call(this,key);
   };
   Storage.prototype.setItem=function(key,value){
-    if(isLocal(this)&&String(key)===KEY){
+    if(isLocal(this,key)){
       const text=String(value);
-      if(marker&&!ready){console.warn("[APEX ORACLE] IndexedDB読込完了前のスクリム書込を保留しました");return;}
-      cache=text;ready=true;marker=true;
-      native.set.call(this,KEY,MARKER);
-      persist(text);
+      cache=text;
+      ready=true;
+      native.set.call(this,KEY,text);
       return;
     }
     return native.set.call(this,key,value);
   };
   Storage.prototype.removeItem=function(key){
-    if(isLocal(this)&&String(key)===KEY){cache="[]";ready=true;marker=true;native.set.call(this,KEY,MARKER);writeChain=writeChain.then(()=>idbDelete(KEY));return}
+    if(isLocal(this,key)){
+      cache="[]";
+      ready=true;
+      native.remove.call(this,KEY);
+      return;
+    }
     return native.remove.call(this,key);
   };
-  async function init(){
-    if(!("indexedDB" in window)){console.error("[APEX ORACLE] IndexedDB未対応");return}
-    const raw=native.get.call(localStorage,KEY);
-    marker=!!(raw&&raw.includes('"__apexIndexedDB"'));
+
+  function bridgeFrame(frame){
     try{
-      if(raw&&!marker){
-        cache=raw;ready=true;
-        await persist(raw);
-        native.set.call(localStorage,KEY,MARKER);
-        marker=true;
-        console.info("[APEX ORACLE] スクリムデータをIndexedDBへ移行しました",Math.round(new Blob([raw]).size/1024)+"KB");
-      }else{
-        const stored=await idbGet(KEY);
-        cache=typeof stored==="string"?stored:"[]";
-        ready=true;
-        if(!marker)native.set.call(localStorage,KEY,MARKER);
-        marker=true;
-        console.info("[APEX ORACLE] IndexedDBからスクリムデータを読み込みました");
-      }
-      window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:cache}));
-      window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"indexeddb-scrim-load"}}));
-    }catch(e){
-      console.error("[APEX ORACLE] スクリムIndexedDB初期化失敗",e);
-      if(raw&&!marker){cache=raw;ready=true}
-    }
+      const w=frame?.contentWindow;
+      if(!w||w===window||w.__apexLocalStorageBridge)return;
+      const proto=w.Storage?.prototype;
+      if(!proto)return;
+      w.__apexLocalStorageBridge=true;
+      const get=proto.getItem,set=proto.setItem,remove=proto.removeItem;
+      proto.getItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.getItem(KEY);return get.call(this,key)};
+      proto.setItem=function(key,value){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.setItem(KEY,value);return set.call(this,key,value)};
+      proto.removeItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.removeItem(KEY);return remove.call(this,key)};
+    }catch(e){console.warn("[APEX ORACLE] iframe保存ブリッジ設定失敗",e);}
   }
+  function bridgeAll(){document.querySelectorAll("iframe").forEach(bridgeFrame);}
+
+  async function init(){
+    const localRaw=native.get.call(localStorage,KEY);
+    let oldRaw=null;
+    try{oldRaw=await readOldData();}catch(e){console.warn("[APEX ORACLE] 旧IndexedDB読込失敗",e);}
+
+    const localCount=count(localRaw);
+    const oldCount=count(oldRaw);
+    if(localCount>=0&&oldCount>=0)cache=oldCount>localCount?oldRaw:localRaw;
+    else if(oldCount>=0)cache=oldRaw;
+    else if(localCount>=0)cache=localRaw;
+    else cache="[]";
+
+    native.set.call(localStorage,KEY,cache);
+    ready=true;
+    bridgeAll();
+    window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:cache}));
+    window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"localstorage-scrim-restore-v1"}}));
+    window.dispatchEvent(new CustomEvent("apex:storage-ready"));
+    console.info("[APEX ORACLE] スクリム保存方式をlocalStorageへ復旧しました",{localMatches:localCount,indexedDbMatches:oldCount,restoredMatches:count(cache)});
+    return true;
+  }
+
   const parse=(raw,fallback=null)=>{try{return raw==null?fallback:JSON.parse(raw)}catch(_){return fallback}};
   const core={
-    native:{get:native.get,set:native.set,remove:native.remove},
+    native,
     withInternal:fn=>fn(),
     read:(key,fallback=null)=>{const raw=localStorage.getItem(key);return raw===null?fallback:parse(raw,raw)},
     readJSON:(key,fallback=null,{validate}={})=>{const v=parse(localStorage.getItem(key),fallback);return validate&&!validate(v)?fallback:v},
@@ -90,27 +127,17 @@
     verifyIntegrity:()=>true,
     safeBackup:()=>true,
     replaceStorage:(storage)=>{for(const [key,value] of Object.entries(storage||{}))core.write(key,value);return true},
-    flush:()=>writeChain,
-    storageStatus:()=>({ready,marker,bytes:cache?new Blob([cache]).size:0,database:DB_NAME})
+    flush:()=>Promise.resolve(true),
+    ready:()=>initPromise,
+    storageStatus:()=>({ready,backend:"localStorage",matches:count(cache),bytes:cache?new Blob([cache]).size:0})
   };
   if(!window.ApexDataCore)window.ApexDataCore=core;
-  else for(const [k,v] of Object.entries(core))if(window.ApexDataCore[k]==null)window.ApexDataCore[k]=v;
-  function bridgeFrame(frame){
-    try{
-      const w=frame?.contentWindow;if(!w||w===window||w.__apexScrimIdbBridge)return;
-      const proto=w.Storage?.prototype;if(!proto)return;
-      w.__apexScrimIdbBridge=true;
-      const childGet=proto.getItem,childSet=proto.setItem,childRemove=proto.removeItem;
-      proto.getItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.getItem(KEY);return childGet.call(this,key)};
-      proto.setItem=function(key,value){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.setItem(KEY,value);return childSet.call(this,key,value)};
-      proto.removeItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.removeItem(KEY);return childRemove.call(this,key)};
-    }catch(e){console.warn("[APEX ORACLE] iframe保存ブリッジ設定失敗",e)}
-  }
-  function bridgeAll(){document.querySelectorAll("iframe").forEach(bridgeFrame)}
+  else for(const [k,v] of Object.entries(core))window.ApexDataCore[k]=v;
+
   document.addEventListener("load",e=>{if(e.target?.tagName==="IFRAME")bridgeFrame(e.target)},true);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bridgeAll,{once:true});else bridgeAll();
-  window.ApexScrimIndexedDB={init,flush:()=>writeChain,status:core.storageStatus,readRaw:()=>cache,bridgeFrame,bridgeAll};
-  init();
+  initPromise=init();
+  window.ApexScrimStorageRestore={ready:()=>initPromise,status:core.storageStatus,readRaw:()=>cache,bridgeAll};
 })();
 </script><meta name="apex-build" content="home-team-probability-fixed-v1">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
