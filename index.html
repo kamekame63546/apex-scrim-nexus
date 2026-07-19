@@ -1993,11 +1993,16 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
   if(!created.length)throw new Error("登録対象の通常スクリムを特定できませんでした");
   const groups=new Map();created.forEach(m=>{const id=idOf(m);if(!id)return;if(!groups.has(id))groups.set(id,[]);groups.get(id).push(m)});
   stage="IndexedDBへ保存";
-  for(const [id,matches] of groups){const first=matches[0]||{};await window.parent.ApexScrimDB.putSet({id,setId:id,date:String(first.date||""),split:String(first.split||window.parent.IntegratedSplit?.current?.()||""),block:String(first.block||""),rule:String(first.rule||"normal").toLowerCase()==="poland"?"poland":"normal",type:String(first.rule||"normal").toLowerCase()==="poland"?"poland":"normal",map:String(first.map||""),legendBans:Array.isArray(first.legendBans)?first.legendBans:[],matches})}
+  const legendBans=Array.isArray(window.parent.LegendBanEditor?.get?.())?window.parent.LegendBanEditor.get():[];
+  for(const [id,rawMatches] of groups){
+   const matches=rawMatches.map(match=>({...match,legendBans:legendBans.slice()}));
+   const first=matches[0]||{};
+   await window.parent.ApexScrimDB.putSet({id,setId:id,date:String(first.date||""),split:String(first.split||window.parent.IntegratedSplit?.current?.()||""),block:String(first.block||""),rule:String(first.rule||"normal").toLowerCase()==="poland"?"poland":"normal",type:String(first.rule||"normal").toLowerCase()==="poland"?"poland":"normal",map:String(first.map||""),legendBans:legendBans.slice(),matches});
+  }
   if(editing&&!groups.has(editing))await window.parent.ApexScrimDB.deleteSet(editing);
   localStorage.removeItem("apexIntegratedEditingScrimSetId");
   await window.parent.ApexScrimViewData?.refresh?.();
-  try{window.parent.ScrimSavedList?.render?.();window.parent.ScrimRegisterAdmin?.showTeamSet?.([...groups.keys()][0]);window.parent.IntegratedApp?.refreshGlobalSplit?.()}catch(_){}
+  try{window.parent.LegendBanEditor?.set?.([]);window.parent.ScrimSavedList?.render?.();window.parent.ScrimRegisterAdmin?.showTeamSet?.([...groups.keys()][0]);window.parent.IntegratedApp?.refreshGlobalSplit?.()}catch(_){}
   nativeAlert(queuedAlerts.at(-1)||"スクリムを登録しました");return result;
  }catch(error){console.error("NORMAL_SCRIM_INDEXEDDB_SAVE_FAILED",{stage,error});nativeAlert(["保存に失敗しました。元の試合データは変更していません。","","失敗段階: "+stage,"例外内容: "+(error?.message||String(error))].join("\n"))}
  finally{w.alert=nativeAlert}
@@ -5269,9 +5274,9 @@ async function saveLegendBansToCreatedSet(beforeIds){
  }catch(error){console.error("Legend Ban IndexedDB保存失敗",error);alert("Legend Banの保存に失敗しました。\n"+(error?.message||error))}
 }
 function installNormalLegendBansSave(win){
- if(!win?.__integratedEditSavePatch||win.__legendBansSaveIntegrated||typeof win.addMatchSet!=='function')return false;
- win.__legendBansSaveIntegrated=true;const original=win.addMatchSet;
- win.addMatchSet=function(){const before=scrimSetIds(),result=original.apply(this,arguments);Promise.resolve(result).then(()=>saveLegendBansToCreatedSet(before));return result};return true;
+ if(!win?.__integratedEditSavePatch||typeof win.addMatchSet!=='function')return false;
+ win.__legendBansSaveIntegrated=true;
+ return true;
 }
 function ensureNormalLegendBansSave(attempt=0){
  const frame=$('adminScrimRegisterFrame');if(!installNormalLegendBansSave(frame?.contentWindow)&&attempt<50)setTimeout(()=>ensureNormalLegendBansSave(attempt+1),200);
