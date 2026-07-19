@@ -1,85 +1,83 @@
 <!DOCTYPE html>
 
 <html class="v328-auth-pending" lang="ja">
-<head><script id="apex-idb-scrim-storage-v2">
+<head><script id="apex-storage-recovery-v1">
 (()=>{"use strict";
- const KEY="apexStatsMatchesV6",MARKER='{"__apexIndexedDB":true,"version":2}',DB_NAME="apexOracleDataV2",STORE="keyValue";
+ const SCRIM_KEY="apexStatsMatchesV6",DB_NAME="apexOracleDataV2",STORE="keyValue";
  const native={get:Storage.prototype.getItem,set:Storage.prototype.setItem,remove:Storage.prototype.removeItem};
- let cache=null,ready=false,dbPromise=null,writeChain=Promise.resolve(),initPromise=null;
- const isLocal=ctx=>ctx===window.localStorage;
+ let scrimCache=null,ready=false,dbPromise=null,writeChain=Promise.resolve(),initPromise;
+ const parse=(raw,fallback=null)=>{try{return raw==null?fallback:JSON.parse(raw)}catch(_){return fallback}};
+ const stringify=v=>typeof v==="string"?v:JSON.stringify(v);
+ const countMatches=raw=>{const v=parse(raw,[]);return Array.isArray(v)?v.length:-1};
  const openDb=()=>dbPromise||(dbPromise=new Promise((resolve,reject)=>{
+   if(!("indexedDB" in window))return reject(new Error("IndexedDB未対応"));
    const req=indexedDB.open(DB_NAME,1);
    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE)};
    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("IndexedDBを開けませんでした"));
-   req.onblocked=()=>reject(new Error("IndexedDBが他のタブで使用中です"));
+   req.onblocked=()=>reject(new Error("IndexedDBが別タブで使用中です"));
  }));
  const request=(mode,action)=>openDb().then(db=>new Promise((resolve,reject)=>{
-   const tx=db.transaction(STORE,mode),store=tx.objectStore(STORE),req=action(store);
-   req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||tx.error);
+   let tx,req;
+   try{tx=db.transaction(STORE,mode);req=action(tx.objectStore(STORE))}catch(e){reject(e);return}
+   req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error||tx.error||new Error("IndexedDB request failed"));
    tx.onabort=()=>reject(tx.error||new Error("IndexedDB transaction aborted"));
  }));
- const idbGet=key=>request("readonly",store=>store.get(key));
- const idbPut=(key,value)=>request("readwrite",store=>store.put(value,key));
- const idbDelete=key=>request("readwrite",store=>store.delete(key));
- const setMarkerSafely=()=>{native.remove.call(localStorage,KEY);native.set.call(localStorage,KEY,MARKER)};
- const enqueue=value=>{writeChain=writeChain.then(()=>idbPut(KEY,value)).then(()=>{try{setMarkerSafely()}catch(e){console.warn("[APEX ORACLE] 参照マーカー保存失敗",e)}});return writeChain};
- const parse=(raw,fallback=null)=>{try{return raw==null?fallback:JSON.parse(raw)}catch(_){return fallback}};
- const core={
-   native:{get:native.get,set:native.set,remove:native.remove},
-   withInternal:fn=>fn(),
-   read:(key,fallback=null)=>{const raw=localStorage.getItem(key);return raw===null?fallback:parse(raw,raw)},
-   readJSON:(key,fallback=null,{validate}={})=>{const v=parse(localStorage.getItem(key),fallback);return validate&&!validate(v)?fallback:v},
-   write:(key,value)=>{localStorage.setItem(key,typeof value==="string"?value:JSON.stringify(value));return true},
-   transaction:(changes)=>{if(!changes||typeof changes!=="object")throw new Error("保存内容が不正です");for(const [key,value] of Object.entries(changes)){if(value===undefined)localStorage.removeItem(key);else localStorage.setItem(key,typeof value==="string"?value:JSON.stringify(value))}return true},
-   validKey:()=>true,audit:(name,data)=>{try{console.debug("[ApexDataCore]",name,data)}catch(_){}},
-   buildIntegrity:storage=>({version:2,keys:Object.keys(storage||{}),overallHash:String(JSON.stringify(storage||{}).length)}),
-   verifyIntegrity:()=>true,safeBackup:()=>true,
-   replaceStorage:storage=>{for(const [key,value] of Object.entries(storage||{}))core.write(key,value);return true},
-   flush:()=>writeChain,ready:()=>initPromise||Promise.resolve(),storageStatus:()=>({ready,bytes:cache?new Blob([cache]).size:0,database:DB_NAME})
- };
- try{Object.defineProperty(window,"ApexDataCore",{value:core,writable:false,configurable:false,enumerable:true})}catch(_){window.ApexDataCore=core}
- Storage.prototype.getItem=function(key){
-   if(isLocal(this)&&String(key)===KEY){if(cache!==null)return cache;const raw=native.get.call(this,KEY);if(raw&&raw!==MARKER&&!raw.includes('"__apexIndexedDB"'))return raw;return "[]"}
-   return native.get.call(this,key)
- };
+ const idbGet=()=>request("readonly",store=>store.get(SCRIM_KEY));
+ const idbPut=value=>request("readwrite",store=>store.put(value,SCRIM_KEY));
+ const isScrim=(ctx,key)=>ctx===window.localStorage&&String(key)===SCRIM_KEY;
+ Storage.prototype.getItem=function(key){if(isScrim(this,key)&&scrimCache!==null)return scrimCache;return native.get.call(this,key)};
  Storage.prototype.setItem=function(key,value){
-   if(isLocal(this)&&String(key)===KEY){const text=String(value);cache=text;ready=true;enqueue(text).catch(e=>{console.error("[APEX ORACLE] スクリムIndexedDB保存失敗",e);alert("スクリムデータのIndexedDB保存に失敗しました。\n"+(e?.message||e))});return}
-   return native.set.call(this,key,value)
+   if(isScrim(this,key)){
+     const text=String(value),old=scrimCache;scrimCache=text;ready=true;
+     writeChain=writeChain.then(()=>idbPut(text)).catch(e=>{scrimCache=old;console.error("[APEX ORACLE] スクリム保存失敗",e);throw e});
+     return;
+   }
+   return native.set.call(this,key,value);
  };
  Storage.prototype.removeItem=function(key){
-   if(isLocal(this)&&String(key)===KEY){cache="[]";ready=true;writeChain=writeChain.then(()=>idbDelete(KEY)).then(()=>{try{setMarkerSafely()}catch(_){}});return}
-   return native.remove.call(this,key)
+   if(isScrim(this,key)){scrimCache="[]";ready=true;writeChain=writeChain.then(()=>idbPut("[]"));return}
+   return native.remove.call(this,key);
  };
+ const core={
+   native,
+   withInternal:fn=>fn(),
+   read:(key,fallback=null)=>{const raw=localStorage.getItem(key);if(raw==null)return fallback;const v=parse(raw,Symbol.for("bad"));return v===Symbol.for("bad")?raw:v},
+   readJSON:(key,fallback=null,{validate}={})=>{const v=parse(localStorage.getItem(key),fallback);return validate&&!validate(v)?fallback:v},
+   write:(key,value)=>{localStorage.setItem(key,stringify(value));window.dispatchEvent(new CustomEvent("apex:data-changed",{detail:{keys:[key]}}));return true},
+   transaction:(changes,options={})=>{if(!changes||typeof changes!=="object"||Array.isArray(changes))throw new Error("保存内容が不正です");for(const [key,value] of Object.entries(changes)){if(value===undefined)localStorage.removeItem(key);else localStorage.setItem(key,stringify(value))}window.dispatchEvent(new CustomEvent("apex:data-changed",{detail:{keys:Object.keys(changes),reason:options.reason||"transaction"}}));return true},
+   validKey:(key,text)=>{if(text==null)return true;try{JSON.parse(text);return true}catch(_){return typeof text==="string"}},
+   audit:(name,data)=>{try{console.debug("[ApexDataCore]",name,data)}catch(_){}},
+   buildIntegrity:storage=>({version:2,keys:Object.keys(storage||{}).sort(),overallHash:String(JSON.stringify(storage||{}).length)}),
+   verifyIntegrity:(storage,integrity)=>{if(!integrity)return true;const actual=String(JSON.stringify(storage||{}).length);if(integrity.overallHash&&String(integrity.overallHash)!==actual)throw new Error("バックアップ整合性が一致しません");return true},
+   safeBackup:()=>true,
+   replaceStorage:(storage,options={})=>{if(!storage||typeof storage!=="object")throw new Error("復元データが不正です");const changes={};for(const [k,v] of Object.entries(storage))changes[k]=v;return core.transaction(changes,{reason:options.source||"replace-storage"})},
+   flush:()=>writeChain,
+   ready:()=>initPromise,
+   storageStatus:()=>({ready,scrimMatches:countMatches(scrimCache),scrimBytes:scrimCache?new Blob([scrimCache]).size:0,database:DB_NAME})
+ };
+ window.ApexDataCore=core;
+ function bridgeFrame(frame){try{const w=frame?.contentWindow;if(!w||w===window||w.__apexRecoveryBridge)return;w.__apexRecoveryBridge=true;const proto=w.Storage?.prototype;if(!proto)return;const g=proto.getItem,s=proto.setItem,r=proto.removeItem;proto.getItem=function(key){if(this===w.localStorage&&String(key)===SCRIM_KEY)return window.localStorage.getItem(SCRIM_KEY);return g.call(this,key)};proto.setItem=function(key,value){if(this===w.localStorage&&String(key)===SCRIM_KEY)return window.localStorage.setItem(SCRIM_KEY,value);return s.call(this,key,value)};proto.removeItem=function(key){if(this===w.localStorage&&String(key)===SCRIM_KEY)return window.localStorage.removeItem(SCRIM_KEY);return r.call(this,key)}}catch(e){console.warn("[APEX ORACLE] iframeブリッジ失敗",e)}}
+ function bridgeAll(){document.querySelectorAll("iframe").forEach(bridgeFrame)}
  async function init(){
-   if(!("indexedDB" in window))throw new Error("このブラウザはIndexedDBに対応していません");
-   const raw=native.get.call(localStorage,KEY),isMarker=!!(raw&&raw.includes('"__apexIndexedDB"'));
-   if(raw&&!isMarker){
-     cache=raw;ready=true;
-     await idbPut(KEY,raw); // コピー成功を先に確定
-     setMarkerSafely();    // 大容量値を削除してから小さなマーカーを保存
-     console.info("[APEX ORACLE] スクリムデータをIndexedDBへ安全に移行しました",Math.round(new Blob([raw]).size/1024)+"KB");
-   }else{
-     const stored=await idbGet(KEY);cache=typeof stored==="string"?stored:"[]";ready=true;
-     try{setMarkerSafely()}catch(e){console.warn("[APEX ORACLE] マーカー保存失敗",e)}
-     console.info("[APEX ORACLE] IndexedDBからスクリムデータを読み込みました");
-   }
-   window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:cache}));
-   window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"indexeddb-scrim-load"}}));
+   const localRaw=native.get.call(localStorage,SCRIM_KEY),localIsData=countMatches(localRaw)>=0,idbRaw=await idbGet().catch(()=>null),idbIsData=countMatches(idbRaw)>=0;
+   if(localIsData&&idbIsData)scrimCache=countMatches(idbRaw)>=countMatches(localRaw)?idbRaw:localRaw;
+   else if(idbIsData)scrimCache=idbRaw;
+   else if(localIsData)scrimCache=localRaw;
+   else scrimCache="[]";
+   ready=true;
+   console.info("[APEX ORACLE] 保存復旧読込完了",{localMatches:countMatches(localRaw),indexedDbMatches:countMatches(idbRaw),selectedMatches:countMatches(scrimCache)});
+   bridgeAll();
+   window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"storage-recovery-v1"}}));
+   window.dispatchEvent(new CustomEvent("apex:storage-ready"));
    return true;
  }
- initPromise=init().catch(e=>{console.error("[APEX ORACLE] スクリムIndexedDB初期化失敗",e);const raw=native.get.call(localStorage,KEY);if(raw&&raw!==MARKER){cache=raw;ready=true}throw e});
- function announceReady(){
-   try{window.dispatchEvent(new CustomEvent("apex:scrim-idb-ready",{detail:{key:KEY,bytes:cache?new Blob([cache]).size:0}}))}catch(_){}
- }
- initPromise.then(()=>{
-   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(announceReady,0),{once:true});
-   else setTimeout(announceReady,0);
- }).catch(()=>{});
- function bridgeFrame(frame){try{const w=frame?.contentWindow;if(!w||w===window||w.__apexScrimIdbBridgeV2)return;const proto=w.Storage?.prototype;if(!proto)return;w.__apexScrimIdbBridgeV2=true;const g=proto.getItem,s=proto.setItem,r=proto.removeItem;proto.getItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.getItem(KEY);return g.call(this,key)};proto.setItem=function(key,value){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.setItem(KEY,value);return s.call(this,key,value)};proto.removeItem=function(key){if(this===w.localStorage&&String(key)===KEY)return window.localStorage.removeItem(KEY);return r.call(this,key)}}catch(e){console.warn("[APEX ORACLE] iframe保存ブリッジ設定失敗",e)}}
- function bridgeAll(){document.querySelectorAll("iframe").forEach(bridgeFrame)}
+ initPromise=init().catch(e=>{console.error("[APEX ORACLE] 保存復旧初期化失敗",e);const raw=native.get.call(localStorage,SCRIM_KEY);scrimCache=countMatches(raw)>=0?raw:"[]";ready=true;return false});
  document.addEventListener("load",e=>{if(e.target?.tagName==="IFRAME")bridgeFrame(e.target)},true);
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bridgeAll,{once:true});else bridgeAll();
- window.ApexScrimIndexedDB={ready:()=>initPromise,flush:()=>writeChain,status:core.storageStatus,readRaw:()=>cache,bridgeFrame,bridgeAll};
+ function reRender(){bridgeAll();const calls=[["HomeApp","render"],["ScrimSavedList","render"],["ZoneOverviewApp","render"],["RingConsoleCleanV164","renderApp"],["MetaAnalysisApp","render"]];for(const [o,m] of calls)try{window[o]?.[m]?.()}catch(e){console.warn("再表示失敗",o,m,e)}try{window.Phase2RankingTeamBridgeV341?.scan?.()}catch(_){}try{window.ApexPhase3Core?.refresh?.("storage-recovery") }catch(_){} }
+ initPromise.then(()=>{if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(reRender,250),{once:true});else setTimeout(reRender,250)});
+ async function report(){const local={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k)continue;const raw=native.get.call(localStorage,k);local[k]={bytes:raw?new Blob([raw]).size:0,type:Array.isArray(parse(raw,null))?"array":typeof parse(raw,raw),count:Array.isArray(parse(raw,null))?parse(raw,[]).length:null}}const result={status:core.storageStatus(),localStorage:local};console.table(Object.entries(local).map(([key,v])=>({key,...v})).sort((a,b)=>b.bytes-a.bytes));console.log("[APEX ORACLE] 保存棚卸し",result);return result}
+ async function exportAll(){await initPromise;const storage={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k)storage[k]=core.read(k,null)}storage[SCRIM_KEY]=parse(scrimCache,[]);const blob=new Blob([JSON.stringify({app:"APEX ORACLE",createdAt:new Date().toISOString(),storage},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="apex-oracle-recovery-backup-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+ window.ApexStorageRecoveryV1={ready:()=>initPromise,status:core.storageStatus,report,exportAll,bridgeAll,readScrims:()=>parse(scrimCache,[])};
 })();
 </script><meta name="apex-build" content="home-team-probability-fixed-v1">
 <meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires"/>
@@ -5287,147 +5285,5 @@ function num(id){return Number(document.getElementById(id)?.value)||0}function s
 function boot(){document.getElementById("compositionSimulatorStylesV1")?.remove();document.getElementById("compositionSimulatorV1")?.remove();document.getElementById("compositionSimulatorPanel")?.remove();document.getElementById("csModal")?.remove();const old=document.querySelector('[data-app="compositionSimulator"]');old?.remove();const tabs=document.getElementById("tabsScrim");tabs?.insertAdjacentHTML("beforeend",'<button class="pageTab" data-app="compositionSimulator" data-page="simulator" onclick="window.LootRouteApp?.leave?.();CompositionSimulator.show()">構成シミュレーター</button>');document.querySelector(".stage")?.insertAdjacentHTML("beforeend",`<div class="compositionSimulatorPanel" id="compositionSimulatorPanel"><div class="cs2Head"><div><h2>構成シミュレーター</h2><div class="cs2Sub">現在のSplitと管理設定期間から構成ランキングを算出</div></div><div class="cs2Split" id="cs2CurrentSplit"></div></div><section class="cs2Card"><h3>検索条件</h3><div class="cs2TopFilters"><label>MAP<select id="cs2Map" onchange="CompositionSimulator.query()"><option value="">全MAP</option><option>World's Edge</option><option>Storm Point</option><option>Olympus</option><option>E-District</option></select></label><label>最低使用回数<input id="cs2Min" type="number" inputmode="numeric" value="5" oninput="CompositionSimulator.query()"></label></div><div class="cs2PickerTitle">BAN <span id="cs2BanCount">0/10体</span></div><div class="cs2LegendGroups" id="cs2BanGrid"></div><div class="cs2PickerTitle">使用レジェンド <span id="cs2UseCount">0/3体</span></div><div class="cs2LegendGroups" id="cs2UseGrid"></div></section><section class="cs2Card"><div class="cs2Summary" id="cs2Summary"></div><div class="cs2TableWrap"><table class="cs2Table"><thead id="cs2TableHead"><tr><th>#</th><th>構成</th><th data-sort-key="avgKP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgKP')">Avg KP</th><th data-sort-key="avgPP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgPP')">Avg PP</th><th data-sort-key="avgTP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgTP')">Avg TP</th><th data-sort-key="score" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','score')">評価</th><th>Pick率</th><th data-sort-key="usageCount" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','usageCount')">使用回数</th></tr></thead><tbody id="cs2Rows"></tbody></table></div></section></div><div class="cs2Modal" id="cs2Modal"><div class="cs2ModalBox"><div class="cs2ModalHead"><h3 id="cs2ModalTitle"></h3><button class="cs2Close" onclick="CompositionSimulator.closeDetail()">×</button></div><div class="cs2Metrics" id="cs2Metrics"></div><h4 class="cs2SectionTitle">MAP別</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>MAP</th><th>使用回数</th><th>Avg TP</th><th>Avg KP</th><th>Avg PP</th><th>Avg Place</th></tr></thead><tbody id="cs2MapRows"></tbody></table></div><h4 class="cs2SectionTitle">使用試合一覧</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>Date</th><th>Split</th><th>MAP</th><th>Block</th><th>Match</th><th>Team</th><th>KP</th><th>PP</th><th>TP</th><th>Place</th><th>BAN</th></tr></thead><tbody id="cs2GameRows"></tbody></table></div></div></div>`);ApexCommonUI.tableSort.register("compositionRanking",{onChange:query});renderPickers();document.addEventListener("pointerdown",e=>{const b=e.target?.closest?.(".sideMenu [data-app]");if(b&&b.dataset.app!=="compositionSimulator")hide()},true);document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});document.getElementById("cs2Modal")?.addEventListener("click",e=>{if(e.target.id==="cs2Modal")closeDetail()});const oldRegistration=window.IntegratedApp?.registration;if(oldRegistration&&!oldRegistration.__cs2Wrapped){const wrapped=function(){hide();const r=oldRegistration.apply(this,arguments);setTimeout(ensureAdmin,0);return r};wrapped.__cs2Wrapped=true,window.IntegratedApp.registration=wrapped}setTimeout(ensureAdmin,500)}
 
 window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensureAdmin,renderImageAdmin,chooseImage,uploadImage,deleteImage,changeRole,moveLegend,saveSettings,resetSettings,reset,settings,baseBucket,groupProfilesByRole,getLegendImageUrl};window.addEventListener("apex:legend-media-change",()=>{renderImageAdmin();renderPickers();query()});window.addEventListener("apex:legend-image-ready",()=>{renderImageAdmin();renderPickers();if(document.getElementById("compositionSimulatorPanel")?.classList.contains("active"))query()});window.addEventListener("beforeunload",()=>LegendImageAssets.revokeAll(),{once:true});window.addEventListener("apex:data-applied",()=>{state.baseCache.clear();if(document.getElementById("compositionSimulatorPanel")?.classList.contains("active"))query()});document.readyState==="loading"?document.addEventListener("DOMContentLoaded",boot,{once:true}):boot()})();</script>
-
-
-
-
-<script id="phase0-scrim-set-diagnostic-v1">
-
-(()=>{"use strict";
- const KEY="apexStatsMatchesV6";
- const text=v=>String(v??"").trim();
- const normRule=v=>text(v).toLowerCase()==="poland"?"poland":"normal";
- const formalId=m=>text(m?.setId||m?.scrimId||m?.scrim_id);
- const fallbackId=m=>`${text(m?.date)}_${text(m?.block)}_${normRule(m?.rule)}`;
- const setKey=m=>formalId(m)||fallbackId(m);
- const unique=values=>[...new Set(values.map(text).filter(Boolean))];
- function read(){
-  try{const rows=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(rows)?rows:[]}
-  catch(error){return[]}
- }
- function diagnose(){
-  const rows=read(),groups=new Map(),formalUsage=new Map();
-  rows.forEach((match,index)=>{
-   const key=setKey(match),id=formalId(match),entry=groups.get(key)||{key,usesFallback:!id,items:[]};
-   entry.items.push({match,index});groups.set(key,entry);
-   if(id){const list=formalUsage.get(id)||[];list.push({match,index});formalUsage.set(id,list)}
-  });
-  const mixed=[],fallbackGroups=[],duplicateMatchNumbers=[],formalIdConflicts=[];
-  for(const group of groups.values()){
-   const matches=group.items.map(x=>x.match),dates=unique(matches.map(m=>m.date)),blocks=unique(matches.map(m=>m.block)),rules=unique(matches.map(m=>normRule(m.rule))),splits=unique(matches.map(m=>m.split));
-   const numbers=matches.map(m=>Number(m.matchNo)).filter(Number.isFinite),counts={};numbers.forEach(n=>counts[n]=(counts[n]||0)+1);
-   const duplicateNos=Object.entries(counts).filter(([,count])=>count>1).map(([no,count])=>({matchNo:Number(no),count}));
-   const summary={setKey:group.key,usesFallback:group.usesFallback,games:matches.length,dates:dates.join(" / ")||"-",blocks:blocks.join(" / ")||"-",rules:rules.join(" / ")||"-",splits:splits.join(" / ")||"-"};
-   if(dates.length>1||blocks.length>1||rules.length>1||splits.length>1)mixed.push({...summary,mixedFields:[dates.length>1&&"日付",blocks.length>1&&"Block",rules.length>1&&"ルール",splits.length>1&&"Split"].filter(Boolean).join(" / ")});
-   if(group.usesFallback)fallbackGroups.push(summary);
-   if(duplicateNos.length)duplicateMatchNumbers.push({...summary,duplicateMatchNumbers:duplicateNos.map(x=>`Match${x.matchNo}×${x.count}`).join(" / ")});
-  }
-  for(const [id,list] of formalUsage){
-   const matches=list.map(x=>x.match),dates=unique(matches.map(m=>m.date)),blocks=unique(matches.map(m=>m.block)),rules=unique(matches.map(m=>normRule(m.rule))),splits=unique(matches.map(m=>m.split));
-   if(dates.length>1||blocks.length>1||rules.length>1||splits.length>1)formalIdConflicts.push({formalId:id,games:matches.length,dates:dates.join(" / ")||"-",blocks:blocks.join(" / ")||"-",rules:rules.join(" / ")||"-",splits:splits.join(" / ")||"-",conflictFields:[dates.length>1&&"日付",blocks.length>1&&"Block",rules.length>1&&"ルール",splits.length>1&&"Split"].filter(Boolean).join(" / ")});
-  }
-  const report={createdAt:new Date().toISOString(),games:rows.length,sets:groups.size,formalIdSets:[...formalUsage.keys()].length,fallbackSets:fallbackGroups.length,mixed,formalIdConflicts,fallbackGroups,duplicateMatchNumbers,ok:!mixed.length&&!formalIdConflicts.length&&!duplicateMatchNumbers.length};
-  try{
-   console.groupCollapsed(`[APEX ORACLE] スクリムID診断: ${report.ok?"異常候補なし":"要確認"} / ${report.games}試合・${report.sets}セット`);
-   console.log("診断結果",report);
-   if(formalIdConflicts.length){console.warn("同じ正式IDに複数の日付・Block・ルール・Splitが混在",formalIdConflicts);console.table(formalIdConflicts)}
-   if(mixed.length){console.warn("同じセットとしてまとめられたデータ内の混在",mixed);console.table(mixed)}
-   if(duplicateMatchNumbers.length){console.warn("同じセット内でMatch番号が重複",duplicateMatchNumbers);console.table(duplicateMatchNumbers)}
-   if(fallbackGroups.length){console.info("正式IDがなく、日付＋Block＋ルールの仮IDでまとめられているセット",fallbackGroups);console.table(fallbackGroups)}
-   console.groupEnd();
-  }catch(_){}
-  return report;
- }
- window.ScrimSetDiagnosticV1={diagnose,read};
- function run(){try{window.__lastScrimSetDiagnostic=diagnose()}catch(error){console.error("SCRIM_SET_DIAGNOSTIC_FAILED",error)}}
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(run,1200),{once:true});else setTimeout(run,1200);
- window.addEventListener("storage",event=>{if(event.key===KEY)setTimeout(run,80)});
- window.addEventListener("apex:data-applied",()=>setTimeout(run,80));
-})();
-
-</script>
-<script id="scrim-object-trace-v2">
-(()=>{"use strict";
- const KEY="apexStatsMatchesV6";
- const state={last:null,sequence:0};
- const text=v=>String(v??"").trim();
- const norm=v=>text(v).normalize("NFKC").toLowerCase().replace(/\s+/g,"");
- function currentSplit(){try{return window.IntegratedSplit?.current?.()||""}catch(_){return""}}
- function keyOf(m){return text(m?.setId||m?.scrimId||m?.scrim_id||`${m?.date||""}_${m?.block||""}_${m?.rule||"normal"}`)}
- function read(){try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(v)?v:[]}catch(_){return[]}}
- function gamesFor(setId){const sp=currentSplit();return read().filter(m=>(!sp||m?.split===sp)&&keyOf(m)===text(setId)).sort((a,b)=>(Number(a?.matchNo)||0)-(Number(b?.matchNo)||0))}
- function fingerprint(setId){
-  const games=gamesFor(setId);
-  return {
-   setId:text(setId),split:currentSplit()||"-",games:games.length,
-   dates:[...new Set(games.map(x=>text(x?.date)).filter(Boolean))],
-   blocks:[...new Set(games.map(x=>text(x?.block)).filter(Boolean))],
-   rules:[...new Set(games.map(x=>text(x?.rule||"normal")))],
-   matches:games.map(x=>Number(x?.matchNo)||text(x?.matchNo)||"-"),
-   maps:games.map(x=>text(x?.map)||"-"),
-   rowCounts:games.map(x=>Array.isArray(x?.rows)?x.rows.length:0)
-  };
- }
- function sameFingerprint(a,b){return norm(a?.setId)===norm(b?.setId)&&JSON.stringify(a?.matches||[])===JSON.stringify(b?.matches||[])&&JSON.stringify(a?.maps||[])===JSON.stringify(b?.maps||[])&&JSON.stringify(a?.rowCounts||[])===JSON.stringify(b?.rowCounts||[])}
- function log(stage,expected,receivedSetId){
-  const actual=fingerprint(receivedSetId),idOk=norm(expected.setId)===norm(receivedSetId),dataOk=sameFingerprint(expected,actual),ok=idOk&&dataOk;
-  const payload={stage,ok,idOk,dataOk,expected,receivedSetId:text(receivedSetId),actual};
-  (ok?console.info:console.error)(`[APEX ORACLE] クリック追跡 ${stage}: ${ok?"一致":"不一致"} / ID=${text(receivedSetId)}`,payload);
-  return payload;
- }
- function start(setId){
-  const expected=fingerprint(setId),seq=++state.sequence;
-  state.last={seq,expected,at:new Date().toISOString(),received:{}};
-  console.groupCollapsed(`[APEX ORACLE] スクリムクリック追跡 #${seq} / ${expected.dates.join(" / ")||"-"} / ${expected.blocks.join(" / ")||"-"} / ${expected.games}試合`);
-  console.table([expected]);console.groupEnd();
-  return expected;
- }
- function install(){if(window.ScrimObjectTraceV2?.installed)return;
-  try{if(typeof ScrimSavedList!=="undefined"&&typeof ScrimSavedList.open==="function"){const original=ScrimSavedList.open.bind(ScrimSavedList);ScrimSavedList.open=function(setId){const expected=start(setId);const out=original(setId);setTimeout(()=>{if(state.last?.expected===expected){const gotTeam=state.last.received.team,gotDetail=state.last.received.detail;if(gotTeam==null)console.warn("[APEX ORACLE] クリック追跡: 右側Team一覧の呼出を確認できませんでした");if(gotDetail==null)console.warn("[APEX ORACLE] クリック追跡: 詳細画面の呼出を確認できませんでした")}},300);return out}}}catch(e){console.warn("scrim trace: list hook failed",e)}
-  try{if(typeof ScrimRegisterAdmin!=="undefined"&&typeof ScrimRegisterAdmin.showTeamSet==="function"){const original=ScrimRegisterAdmin.showTeamSet.bind(ScrimRegisterAdmin);ScrimRegisterAdmin.showTeamSet=function(setId){if(state.last){state.last.received.team=text(setId);log("右側Team一覧へ渡したID",state.last.expected,setId)}return original(setId)}}}catch(e){console.warn("scrim trace: team hook failed",e)}
-  try{if(typeof RowDetailApp!=="undefined"&&typeof RowDetailApp.showScrimSet==="function"){const original=RowDetailApp.showScrimSet.bind(RowDetailApp);RowDetailApp.showScrimSet=function(setId){if(state.last){state.last.received.detail=text(setId);log("詳細画面へ渡したID",state.last.expected,setId)}return original(setId)}}}catch(e){console.warn("scrim trace: detail hook failed",e)}
-  window.ScrimObjectTraceV2={installed:true,start,fingerprint,last:()=>state.last};
-  console.info("[APEX ORACLE] スクリムクリック追跡 v2 を有効化しました");
- }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,300),{once:true});else setTimeout(install,300);
-})();
-</script>
-
-<script id="apex-idb-hydration-v3">
-(()=>{"use strict";
- let hydrated=false;
- function safe(fn){try{return fn()}catch(e){console.warn("[APEX ORACLE] IndexedDB再表示処理失敗",e)}}
- function reloadFrame(id){
-   const frame=document.getElementById(id);if(!frame)return;
-   safe(()=>window.ApexScrimIndexedDB?.bridgeFrame?.(frame));
-   safe(()=>frame.contentWindow?.location?.reload());
- }
- function hydrate(){
-   if(hydrated)return;hydrated=true;
-   safe(()=>window.ApexScrimIndexedDB?.bridgeAll?.());
-   safe(()=>window.ScrimSavedList?.render?.());
-   safe(()=>window.HomeApp?.render?.());
-   safe(()=>window.MetaAnalysisApp?.render?.());
-   safe(()=>window.Phase2RankingTeamBridgeV341?.scan?.());
-   safe(()=>window.ApexPhase3Core?.refresh?.("indexeddb-ready"));
-   ["frameScrim","adminScrimRegisterFrame","adminScrimTeamFrame"].forEach(reloadFrame);
-   setTimeout(()=>{
-     safe(()=>window.ScrimSavedList?.render?.());
-     safe(()=>window.HomeApp?.render?.());
-     safe(()=>window.Phase2RankingTeamBridgeV341?.scan?.());
-     safe(()=>window.dispatchEvent(new CustomEvent("apex:data-applied",{detail:{source:"indexeddb-hydrated"}})));
-     console.info("[APEX ORACLE] IndexedDBのスクリムデータを一覧・ランキングへ再反映しました");
-   },350);
- }
- window.addEventListener("apex:scrim-idb-ready",hydrate,{once:true});
- function start(){
-   const status=window.ApexScrimIndexedDB?.status?.();
-   if(status?.ready)hydrate();
-   else window.ApexScrimIndexedDB?.ready?.().then(hydrate).catch(e=>console.error("[APEX ORACLE] IndexedDB再表示準備失敗",e));
- }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
- window.ApexScrimHydrationV3={hydrate,status:()=>({hydrated,idb:window.ApexScrimIndexedDB?.status?.()})};
-})();
-</script>
 </body>
 </html>
