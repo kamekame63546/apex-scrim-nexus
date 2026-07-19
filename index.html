@@ -2839,7 +2839,158 @@ try{
  window.dispatchEvent(new StorageEvent("storage",{key:KEY,newValue:JSON.stringify(st)}));
 }catch(error){console.error("team-registry-repair-v337",error)}
 }();</script>
-<script id="v280-runtime-core">(()=>{"use strict";const GLOBALS=["IntegratedApp","AdminReg","SplitMasterManager","FightRecordAdmin","ManualZoneAdmin","ScrimRegisterAdmin","ScrimSavedList","RingConsoleStore","RingConsoleCleanV164","ZoneOverviewApp","HomeApp","BackupApp","CloudSyncApp","RowDetailApp","ApexColorize","DisplayAliasV229"],boundDocs=new WeakSet;let queued=!1;const norm=s=>String(s||"").normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase();function ownTeam(){return String(localStorage.getItem("apexIntegratedOwnTeam")||"").trim()}function classifyButton(b){if(!b||1!==b.nodeType||"BUTTON"!==b.tagName)return;if(b.type||(b.type="button"),b.matches(".pageTab,.appBtn,.zoneMatchBtn")||b.dataset.v280Classified)return;b.dataset.v280Classified="1",b.style.animation="none";const t=(b.textContent||"").trim();b.classList.add("actionBtn"),["登録","保存","追加","決定","この回を記録","アップロード"].includes(t)?b.classList.add("action-primary","追加"===t?"action-add":"action-save"):["編集","更新","入力","読み込み","復元","接続テスト"].includes(t)?b.classList.add("action-secondary","編集"===t?"action-edit":"action-refresh"):["削除","外す","閉じる","キャンセル","クリア","リセット","戻る"].includes(t)&&b.classList.add("action-utility","削除"===t?"action-delete":"外す"===t?"action-remove":"action-sub")}function processNode(node){node&&1===node.nodeType&&("BUTTON"===node.tagName&&classifyButton(node),node.querySelectorAll?.("button").forEach(classifyButton),function(root){try{window.ApexColorize?.apply?.(root)}catch(e){}}(node),function(root){const own=norm(ownTeam()),alias=norm(function(){const own=ownTeam();try{return String(window.DisplayAliasV229?.alias?.("team",own)||own)}catch(_){return own}}());own&&root?.querySelectorAll&&root.querySelectorAll("td,th,span,b,strong,small,label,option,.mapName").forEach(el=>{if(el.childElementCount||el.closest("script,style"))return;const text=norm(el.textContent);el.classList.toggle("ownTeamText",text===own||text===alias)})}(node),"IFRAME"===node.tagName&&bindFrame(node),node.querySelectorAll?.("iframe").forEach(bindFrame))}function processDocument(doc){doc?.body&&processNode(doc.body)}function scheduleDocument(doc=document){queued||(queued=!0,requestAnimationFrame(()=>{queued=!1,processDocument(doc),document.querySelectorAll("iframe").forEach(f=>{try{f.contentDocument?.body&&processDocument(f.contentDocument)}catch(_){}})}))}function bindDocument(doc){if(!doc?.body||boundDocs.has(doc))return;boundDocs.add(doc);processDocument(doc);const pending=new Set;let frame=0;const flush=()=>{frame=0;for(const node of pending)processNode(node);pending.clear()};new MutationObserver(records=>{for(const rec of records)for(const node of rec.addedNodes)node?.nodeType===1&&pending.add(node);frame||(frame=requestAnimationFrame(flush))}).observe(doc.body,{childList:!0,subtree:!0})}function bindFrame(frame){if(!frame||frame.dataset.v280Bound)return;frame.dataset.v280Bound="1";const run=()=>{try{bindDocument(frame.contentDocument)}catch(_){}};frame.addEventListener("load",run),run()}function boot(){!function(){for(const name of GLOBALS)if(!window[name])try{const value=(0,eval)(`typeof ${name}!=='undefined'?${name}:undefined`);value&&(window[name]=value)}catch(_){}}(),bindDocument(document),document.querySelectorAll("iframe").forEach(bindFrame),document.addEventListener("dblclick",e=>{const tr=e.target.closest?.("#ringAdminTable tr");if(!tr)return;const edit=tr.querySelector("button.edit"),del=tr.querySelector("button.delete");edit&&del&&(e.preventDefault(),e.stopPropagation(),confirm("この入力データを編集しますか？\n\nOK：編集\nキャンセル：削除または何もしない")?edit.click():confirm("この入力データを削除しますか？")&&del.click())},!0),window.addEventListener("storage",e=>{["apexV62Clean","apexIntegratedOwnTeam","apexMapChoicesV1","apexDisplayAliasesV1"].includes(e.key)&&scheduleDocument()})}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),window.ApexRuntimeV280={refresh:scheduleDocument,process:processNode}})();</script>
+<script id="v280-runtime-core">(()=>{"use strict";
+const GLOBALS=["IntegratedApp","AdminReg","SplitMasterManager","FightRecordAdmin","ManualZoneAdmin","ScrimRegisterAdmin","ScrimSavedList","RingConsoleStore","RingConsoleCleanV164","ZoneOverviewApp","HomeApp","BackupApp","CloudSyncApp","RowDetailApp","ApexColorize","DisplayAliasV229"];
+let queued=false;
+const norm=s=>String(s||"").normalize("NFKC").trim().replace(/\s+/g," ").toLowerCase();
+const ownTeam=()=>String(localStorage.getItem("apexIntegratedOwnTeam")||"").trim();
+
+function classifyButton(button){
+  if(!button||button.nodeType!==1||button.tagName!=="BUTTON")return;
+  if(!button.type)button.type="button";
+  if(button.matches(".pageTab,.appBtn,.zoneMatchBtn")||button.dataset.v280Classified)return;
+  button.dataset.v280Classified="1";
+  button.style.animation="none";
+  const label=(button.textContent||"").trim();
+  button.classList.add("actionBtn");
+  if(["登録","保存","追加","決定","この回を記録","アップロード"].includes(label)){
+    button.classList.add("action-primary",label==="追加"?"action-add":"action-save");
+  }else if(["編集","更新","入力","読み込み","復元","接続テスト"].includes(label)){
+    button.classList.add("action-secondary",label==="編集"?"action-edit":"action-refresh");
+  }else if(["削除","外す","閉じる","キャンセル","クリア","リセット","戻る"].includes(label)){
+    button.classList.add("action-utility",label==="削除"?"action-delete":label==="外す"?"action-remove":"action-sub");
+  }
+}
+
+function applyOwnTeam(root){
+  if(!root?.querySelectorAll)return;
+  const own=norm(ownTeam());
+  if(!own)return;
+  let alias=own;
+  try{alias=norm(window.DisplayAliasV229?.alias?.("team",ownTeam())||ownTeam())}catch(_){}
+  root.querySelectorAll("td,th,span,b,strong,small,label,option,.mapName").forEach(el=>{
+    if(el.childElementCount||el.closest("script,style"))return;
+    const value=norm(el.textContent);
+    el.classList.toggle("ownTeamText",value===own||value===alias);
+  });
+}
+
+function processNode(node){
+  if(!node||node.nodeType!==1)return;
+  if(node.tagName==="BUTTON")classifyButton(node);
+  node.querySelectorAll?.("button").forEach(classifyButton);
+  try{window.ApexColorize?.apply?.(node)}catch(_){}
+  applyOwnTeam(node);
+}
+
+function visibleRoots(doc=document){
+  const roots=[];
+  const selectors=[
+    ".homePanel.active",
+    ".adminPanel.active",
+    ".scrimRegisterPanel.active",
+    ".appFrame.active",
+    ".detailLayer.open",
+    ".confirmLayer.open",
+    ".backupHelpLayer.open",
+    ".cloudLayer.open"
+  ];
+  for(const selector of selectors){
+    doc.querySelectorAll?.(selector).forEach(node=>roots.push(node));
+  }
+  if(!roots.length&&doc.body)roots.push(doc.body);
+  return [...new Set(roots)];
+}
+
+function processVisible(doc=document){
+  visibleRoots(doc).forEach(processNode);
+  document.querySelectorAll("iframe.active,.appFrame.active").forEach(frame=>{
+    try{
+      const frameDoc=frame.contentDocument;
+      if(frameDoc?.body)processNode(frameDoc.body);
+    }catch(_){}
+  });
+}
+
+function scheduleDocument(doc=document){
+  if(queued)return;
+  queued=true;
+  requestAnimationFrame(()=>{
+    queued=false;
+    processVisible(doc);
+  });
+}
+
+function exposeGlobals(){
+  for(const name of GLOBALS){
+    if(window[name])continue;
+    try{
+      const value=(0,eval)(`typeof ${name}!=='undefined'?${name}:undefined`);
+      if(value)window[name]=value;
+    }catch(_){}
+  }
+}
+
+function bindFrameLoads(){
+  document.querySelectorAll("iframe").forEach(frame=>{
+    if(frame.dataset.v280LoadBound)return;
+    frame.dataset.v280LoadBound="1";
+    frame.addEventListener("load",()=>{
+      if(frame.matches(".active,.appFrame.active"))scheduleDocument();
+    });
+  });
+}
+
+function boot(){
+  exposeGlobals();
+  processNode(document.body);
+  bindFrameLoads();
+
+  document.addEventListener("click",event=>{
+    if(event.target.closest?.(".pageTab,.appBtn,[data-page],[data-mode],button")){
+      requestAnimationFrame(()=>{
+        bindFrameLoads();
+        scheduleDocument();
+      });
+    }
+  },true);
+
+  document.addEventListener("change",event=>{
+    if(event.target.matches?.("#globalSplitSelect,select,input[type=radio],input[type=checkbox]")){
+      scheduleDocument();
+    }
+  },true);
+
+  document.addEventListener("dblclick",event=>{
+    const row=event.target.closest?.("#ringAdminTable tr");
+    if(!row)return;
+    const edit=row.querySelector("button.edit");
+    const del=row.querySelector("button.delete");
+    if(!edit||!del)return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(confirm("この入力データを編集しますか？\n\nOK：編集\nキャンセル：削除または何もしない"))edit.click();
+    else if(confirm("この入力データを削除しますか？"))del.click();
+  },true);
+
+  window.addEventListener("storage",event=>{
+    if(["apexV62Clean","apexIntegratedOwnTeam","apexMapChoicesV1","apexDisplayAliasesV1"].includes(event.key))scheduleDocument();
+  });
+
+  window.addEventListener("apex:render-complete",()=>scheduleDocument());
+}
+
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+else boot();
+
+window.ApexRuntimeV280={
+  refresh:scheduleDocument,
+  process:processNode,
+  processVisible,
+  bindFrames:bindFrameLoads,
+  observerEnabled:false
+};
+})();</script>
 <script id="teamAnalysisV281Fix">(()=>{"use strict";function patchFrame(frame){try{const d=frame?.contentDocument;if(!d)return;let st=d.getElementById("teamAnalysisV281Style");st||(st=d.createElement("style"),st.id="teamAnalysisV281Style",st.textContent="\n          #teamDetailPage .card:not(:first-child),\n          #teamDetailPage .card:not(:first-child) *,\n          #teamDetailPage .grid .card,\n          #teamDetailPage .grid .card *{\n            text-align:center!important;\n          }\n          #teamDetailPage table th,#teamDetailPage table td{text-align:center!important}\n          #teamDetailPage .metric,#teamDetailPage .kpi,#teamDetailPage .stat,\n          #teamDetailPage .teamDetailCard,#teamDetailPage .analysisCard{\n            text-align:center!important;\n            justify-items:center!important;\n          }\n        ",d.head.appendChild(st));const page=d.getElementById("teamDetailPage");if(!page)return;page.querySelectorAll("p,small,.small,.sub,.note,.hint,.description,.criteria,.criterion").forEach(el=>{const text=(el.textContent||"").trim(),card=el.closest(".card,.metric,.kpi,.stat,.teamDetailCard,.analysisCard");/[★☆⭐]/.test(card?.textContent||"")&&/基準/.test(text)&&el.remove()})}catch(_){}}function run(){document.querySelectorAll("iframe").forEach(f=>patchFrame(f))}document.querySelectorAll("iframe").forEach(f=>f.addEventListener("load",()=>setTimeout(()=>patchFrame(f),40))),"loading"===document.readyState?document.addEventListener("DOMContentLoaded",()=>setTimeout(run,120),{once:!0}):setTimeout(run,120),document.addEventListener("click",()=>setTimeout(run,80),!0)})();</script>
 <div aria-hidden="true" class="v290Modal" id="v290ApplyModal">
 <div aria-modal="true" class="v290ModalBox" role="dialog">
