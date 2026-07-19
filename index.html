@@ -2832,25 +2832,48 @@ function updateRegistry(split,oldName,newName){
 function remember(split,oldName,newName){const all=readJson(MAP_KEY,{});all[split]=all[split]&&typeof all[split]==="object"?all[split]:{};all[split][oldName]=newName;localStorage.setItem(MAP_KEY,JSON.stringify(all))}
 function audit(entry){const rows=readJson(AUDIT_KEY,[]);rows.unshift(entry);localStorage.setItem(AUDIT_KEY,JSON.stringify(rows.slice(0,50)))}
 function refreshAll(){for(const fn of [()=>window.HomeApp?.render?.(),()=>window.ScrimSavedList?.render?.(),()=>window.IntegratedApp?.refreshGlobalSplit?.(),()=>window.IntegratedApp?.highlightOwnTeamAll?.(),()=>window.MasterDataListV231?.run?.()])try{fn()}catch(_){}window.dispatchEvent(new CustomEvent("apex:local-data-changed",{detail:{source:"team-name-migration"}}))}
-function migrate({split,oldName,newName,rememberMapping=true,updateTeamRegistry=true}={}){
+async function migrate({split,oldName,newName,rememberMapping=true,updateTeamRegistry=true}={}){
  split=text(split);oldName=text(oldName);newName=text(newName);
- if(!split)throw new Error("対象Splitを選択してください.");if(!oldName)throw new Error("旧チーム名を入力してください.");if(!newName)throw new Error("新チーム名を選択してください.");if(oldName===newName)throw new Error("旧名と新名が同じです。");
- const changed={},rawBackup={},detail={fields:0,keys:0,storageKeys:0};
- for(let i=0;i<localStorage.length;i++){
-  const key=localStorage.key(i);if(!key||!TARGET_KEYS.has(key))continue;
-  const raw=localStorage.getItem(key);if(!raw||!raw.includes(oldName))continue;
-  let value;try{value=JSON.parse(raw)}catch(_){continue}
-  const before=countExact(value,split,oldName);if(!before)continue;
-  const stats={fields:0,keys:0};migrateNode(value,split,oldName,newName,"",stats);
-  if(stats.fields||stats.keys){changed[key]=value;rawBackup[key]=raw;detail.fields+=stats.fields;detail.keys+=stats.keys;detail.storageKeys++}
+ if(!split)throw new Error("対象Splitを選択してください。");
+ if(!oldName)throw new Error("旧チーム名を入力してください。");
+ if(!newName)throw new Error("新チーム名を選択してください。");
+ if(oldName===newName)throw new Error("旧名と新名が同じです。");
+ if(!window.ApexScrimDB?.getSets||!window.ApexScrimDB?.putSet)throw new Error("IndexedDBスクリム保存機能を利用できません。");
+ await window.ApexScrimDB.ready?.();
+ const records=await window.ApexScrimDB.getSets();
+ const targetRecords=(Array.isArray(records)?records:[]).filter(record=>text(record?.split)===split);
+ const changed=[],backups=[];
+ const detail={fields:0,keys:0,storageKeys:0,sets:0,matches:0,before:0,remaining:0};
+ for(const record of targetRecords){
+  const before=countExact(record,split,oldName,split);
+  if(!before)continue;
+  const copy=typeof structuredClone==="function"?structuredClone(record):JSON.parse(JSON.stringify(record));
+  const stats={fields:0,keys:0};
+  migrateNode(copy,split,oldName,newName,split,stats);
+  if(!stats.fields&&!stats.keys)continue;
+  detail.before+=before;detail.fields+=stats.fields;detail.keys+=stats.keys;detail.sets++;
+  detail.matches+=Array.isArray(copy.matches)?copy.matches.length:0;
+  changed.push(copy);backups.push(record);
  }
+ if(!changed.length)throw new Error(`対象Split「${split}」のIndexedDBスクリム内に「${oldName}」が見つかりませんでした。表記（大文字・小文字・空白）を確認してください。`);
+ const saved=[];
  try{
-  for(const [key,value] of Object.entries(changed))localStorage.setItem(key,JSON.stringify(value));
+  for(const record of changed){await window.ApexScrimDB.putSet(record);saved.push(record.id||record.setId)}
+  const verifyRecords=await window.ApexScrimDB.getSets();
+  detail.remaining=(Array.isArray(verifyRecords)?verifyRecords:[]).filter(record=>text(record?.split)===split).reduce((sum,record)=>sum+countExact(record,split,oldName,split),0);
+  if(detail.remaining)throw new Error(`保存後も旧名が ${detail.remaining} 件残っています。`);
   if(updateTeamRegistry)updateRegistry(split,oldName,newName);
   if(rememberMapping)remember(split,oldName,newName);
-  for(const [key,value] of Object.entries(changed)){const remaining=countExact(value,split,oldName);if(remaining)throw new Error(`${key} に旧名が ${remaining} 件残っています。`)}
- }catch(error){for(const [key,raw] of Object.entries(rawBackup))try{localStorage.setItem(key,raw)}catch(_){}throw error}
- audit({at:new Date().toISOString(),split,oldName,newName,...detail});refreshAll();return detail;
+ }catch(error){
+  for(const record of backups)try{await window.ApexScrimDB.putSet(record)}catch(rollbackError){console.error("[APEX ORACLE] チーム名移行ロールバック失敗",rollbackError)}
+  throw error;
+ }
+ detail.storageKeys=detail.sets;
+ audit({at:new Date().toISOString(),backend:"IndexedDB",split,oldName,newName,...detail});
+ try{await window.ApexScrimViewData?.refresh?.()}catch(_){}
+ refreshAll();
+ window.dispatchEvent(new CustomEvent("apex:indexeddb-team-name-migrated",{detail:{split,oldName,newName,...detail}}));
+ return detail;
 }
 function applyMappingsToValue(value){const maps=readJson(MAP_KEY,{});if(!maps||typeof maps!=="object")return value;for(const [split,pairs] of Object.entries(maps)){if(!pairs||typeof pairs!=="object")continue;for(const [oldName,newName] of Object.entries(pairs))migrateNode(value,split,oldName,newName,"",{fields:0,keys:0})}return value}
 
@@ -2876,7 +2899,7 @@ function renderCard(){
  card.dataset.split=split;
 }
 function bind(){
- document.addEventListener("click",event=>{
+ document.addEventListener("click",async event=>{
   const button=event.target?.closest?.("#teamMigrationRunV1");
   if(!button)return;
   event.preventDefault();
@@ -2891,13 +2914,14 @@ function bind(){
   const message=[`旧チーム名：${oldName}`,"","↓","",`新チーム名：${newName}`,"",`対象Split：${split}`,"","関連する保存済みデータを完全一致で移行します。","実行しますか？"].join("\n");
   if(!confirm(message))return;
   try{
-   const detail=migrate({split,oldName,newName,rememberMapping:true,updateTeamRegistry:true});
-   if(resultEl)resultEl.textContent=`移行完了：${detail.fields}件の項目、${detail.keys}件のキー、${detail.storageKeys}個の保存先を更新しました。`;
-   renderCard();
+   button.disabled=true;if(resultEl)resultEl.textContent="IndexedDBのスクリムデータを移行しています…";
+   const detail=await migrate({split,oldName,newName,rememberMapping:true,updateTeamRegistry:true});
+   if(resultEl)resultEl.textContent=`移行完了：${detail.fields}件の項目、${detail.sets}件のスクリム、${detail.matches}試合を更新しました。旧名残件 0件。`;
+   if(oldInput)oldInput.value="";renderCard();
   }catch(error){
    if(resultEl)resultEl.textContent=`エラー：${error?.message||error}`;
    alert(`チーム名移行に失敗しました。\n${error?.message||error}`);
-  }
+  }finally{button.disabled=false}
  },true);
 }
 function init(){renderCard();bind();document.addEventListener("click",e=>{const btn=e.target.closest?.('[data-app="admin"][data-page="registration"]');if(btn)setTimeout(renderCard,80)},true);window.addEventListener("storage",e=>{e.key==="apexV62Clean"&&setTimeout(renderCard,50)});setTimeout(renderCard,500);setTimeout(renderCard,1400)}
