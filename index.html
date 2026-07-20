@@ -3685,7 +3685,11 @@ window.ApexRuntimeV280={
 <script id="cloud-manager-v338-indexeddb-images-safe">(()=>{"use strict";
 const TABLE="apex_nexus_cloud_data",CFG=Object.freeze({url:"https://mmlkgwucvcpmtziwikfk.supabase.co",key:"sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC",workspace:"apex-team-01"});
 let client,loader,busy=false,state="idle",lastError="";
+const CLIENT_ID_KEY="apexCloudRealtimeClientIdV1";
 const $=id=>document.getElementById(id),now=()=>new Date().toISOString();
+function randomId(){try{return crypto.randomUUID()}catch(_){return `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}}
+function getClientId(){let id="";try{id=localStorage.getItem(CLIENT_ID_KEY)||"";if(!id){id=randomId();localStorage.setItem(CLIENT_ID_KEY,id)}}catch(_){id=id||randomId()}return id}
+function createSyncMeta(){return{clientId:getClientId(),revision:randomId(),createdAt:now()}}
 const clone=value=>typeof structuredClone==="function"?structuredClone(value):JSON.parse(JSON.stringify(value));
 const LOCAL_ONLY_KEYS=new Set(["apexIntegratedActiveApp","apexIntegratedScrimPage","apexIntegratedTrackerPage","apexActiveBuild","apexLastTeamAnalysisTeamV1"]);function excluded(k){return!k||LOCAL_ONLY_KEYS.has(k)||k.startsWith("apexCloud")||k.startsWith("apexDataSafety::")||/Login|CurrentRole|PermissionRole|IntegrityAudit/i.test(k)}
 function keys(){const a=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("apex")&&!excluded(k))a.push(k)}return a.sort()}
@@ -3698,11 +3702,11 @@ function dataUrlToBlobSafe(dataUrl){const parts=String(dataUrl||"").split(","),m
 const CLOUD_COMPRESSED_FORMAT="apex-gzip-base64-v1",CLOUD_COMPRESS_THRESHOLD=350000;
 function bytesToBase64(bytes){let binary="";const chunk=32768;for(let i=0;i<bytes.length;i+=chunk){const part=bytes.subarray(i,Math.min(i+chunk,bytes.length));binary+=String.fromCharCode(...part)}return btoa(binary)}
 function base64ToBytes(value){const binary=atob(String(value||"")),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return bytes}
-async function encodeCloudPayload(payload){const json=JSON.stringify(payload),originalBytes=new TextEncoder().encode(json);if(originalBytes.byteLength<CLOUD_COMPRESS_THRESHOLD||typeof CompressionStream!=="function")return{data:payload,compressed:false,originalBytes:originalBytes.byteLength,storedBytes:originalBytes.byteLength};const compressedBuffer=await new Response(new Blob([originalBytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer(),compressedBytes=new Uint8Array(compressedBuffer),envelope={format:CLOUD_COMPRESSED_FORMAT,encoding:"gzip+base64",originalBytes:originalBytes.byteLength,compressedBytes:compressedBytes.byteLength,contentHash:hashValue(payload),payload:bytesToBase64(compressedBytes)};return{data:envelope,compressed:true,originalBytes:originalBytes.byteLength,storedBytes:JSON.stringify(envelope).length}}
+async function encodeCloudPayload(payload){const json=JSON.stringify(payload),originalBytes=new TextEncoder().encode(json);if(originalBytes.byteLength<CLOUD_COMPRESS_THRESHOLD||typeof CompressionStream!=="function")return{data:payload,compressed:false,originalBytes:originalBytes.byteLength,storedBytes:originalBytes.byteLength};const compressedBuffer=await new Response(new Blob([originalBytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer(),compressedBytes=new Uint8Array(compressedBuffer),envelope={format:CLOUD_COMPRESSED_FORMAT,encoding:"gzip+base64",originalBytes:originalBytes.byteLength,compressedBytes:compressedBytes.byteLength,contentHash:hashValue(payload),syncMeta:payload?.syncMeta||null,payload:bytesToBase64(compressedBytes)};return{data:envelope,compressed:true,originalBytes:originalBytes.byteLength,storedBytes:JSON.stringify(envelope).length}}
 async function decodeCloudPayload(value){if(!value||typeof value!=="object"||value.format!==CLOUD_COMPRESSED_FORMAT)return value;if(value.encoding!=="gzip+base64"||typeof value.payload!=="string")throw new Error("クラウド圧縮データの形式が不正です");if(typeof DecompressionStream!=="function")throw new Error("このブラウザはクラウド圧縮データの展開に対応していません");const bytes=base64ToBytes(value.payload),buffer=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer(),decoded=JSON.parse(new TextDecoder().decode(buffer));if(value.contentHash&&value.contentHash!==hashValue(decoded))throw new Error("クラウド圧縮データの整合性確認に失敗しました");return decoded}
 async function collectLegendImages(){const records=await window.ApexIndexedDBAccess.getAll("legendImages"),items=[];for(const record of records||[]){if(!record?.key||!(record.blob instanceof Blob))continue;items.push({key:String(record.key),mimeType:record.mimeType||record.blob.type||"image/webp",updatedAt:record.updatedAt||"",size:record.blob.size||0,dataUrl:await blobToDataUrl(record.blob)})}return{database:"apexOracleAssets",store:"legendImages",schemaVersion:1,count:items.length,contentHash:hashValue(items),items}}
 async function collectLootImages(){const [keys,values]=await Promise.all([window.ApexIndexedDBAccess.getAllKeys("lootRouteImages"),window.ApexIndexedDBAccess.getAll("lootRouteImages")]),items=[];for(let i=0;i<Math.min(keys.length,values.length);i++){const blob=values[i];if(!(blob instanceof Blob))continue;items.push({key:String(keys[i]),mimeType:blob.type||"image/webp",size:blob.size||0,dataUrl:await blobToDataUrl(blob)})}return{database:"apexLootRouteImagesV1",store:"images",schemaVersion:1,count:items.length,contentHash:hashValue(items),items}}
-async function collect(){
+async function collect(syncMeta=null){
   const storage={};
   for(const k of keys()){const v=window.ApexDataCore?.read?.(k,null);if(v!==null)storage[k]=v}
   await window.ApexScrimDB?.ready?.();
@@ -3710,7 +3714,7 @@ async function collect(){
   const normalized=sets.map(normalizeScrim);
   const scrimBlock={database:"ApexOracleDB",store:"scrims",schemaVersion:1,count:normalized.length,matchCount:normalized.reduce((n,r)=>n+(Array.isArray(r.matches)?r.matches.length:0),0),contentHash:hashValue(normalized),sets:normalized};
   const [legendImages,lootRouteImages]=await Promise.all([collectLegendImages(),collectLootImages()]);
-  return{app:"APEX ORACLE",version:"cloud-v338-indexeddb-images-safe",updatedAt:now(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages,lootRouteImages}};
+  return{app:"APEX ORACLE",version:"cloud-v342-realtime-safe",updatedAt:now(),syncMeta:syncMeta||createSyncMeta(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages,lootRouteImages}};
 }
 function validatePayload(payload){
   if(!payload||typeof payload!=="object")throw new Error("クラウドデータ本体が不正です");
@@ -3743,12 +3747,14 @@ async function push(){
   busy=true;
   try{
     setState("syncing","IndexedDBを含めてクラウド更新中…");
-    const payload=await collect();
+    const syncMeta=createSyncMeta(),payload=await collect(syncMeta);
     window.ApexDataCore?.safeBackup?.("before-cloud-push");
     const t=await writeRemote(payload);
     writeMeta("apexCloudLastRemoteAt",t,"cloud-push-meta");
     writeMeta("apexCloudLastLocalHash",payload.integrity?.overallHash||"","cloud-push-hash");
     writeMeta("apexCloudLastScrimHash",payload.indexedDB?.scrims?.contentHash||"","cloud-push-scrim-hash");
+    writeMeta("apexCloudLastRevision",syncMeta.revision,"cloud-push-revision");
+    window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t}}));
     setState("ready",`クラウド更新完了（スクリム ${payload.indexedDB.scrims.count}セット / ${payload.indexedDB.scrims.matchCount}試合・レジェンド画像 ${payload.indexedDB.legendImages.count}件・漁りルート画像 ${payload.indexedDB.lootRouteImages.count}件）`);
     return true;
   }catch(e){setState("error","クラウド更新失敗: "+(e.message||e),e.message||String(e));return false}finally{busy=false}
@@ -3784,6 +3790,7 @@ async function applyRemote(r,{automatic=false,allowDecrease=false}={}){
   const merged=await mergeRemoteScrims(validated.scrims,{automatic});
   const [legendMerged,lootMerged]=await Promise.all([mergeLegendImages(validated.legendImages),mergeLootImages(validated.lootRouteImages)]);
   writeMeta("apexCloudLastRemoteAt",r.updated_at||"","cloud-pull-meta");
+  if(payload?.syncMeta?.revision)writeMeta("apexCloudLastRevision",payload.syncMeta.revision,"cloud-pull-revision");
   writeMeta("apexCloudLastLocalHash",payload.integrity?.overallHash||"","cloud-pull-hash");
   if(payload.indexedDB?.scrims?.contentHash)writeMeta("apexCloudLastScrimHash",payload.indexedDB.scrims.contentHash,"cloud-pull-scrim-hash");
   const detail=merged.supported?`スクリム追加 ${merged.added}・更新 ${merged.updated}・ローカル優先 ${merged.keptLocal}・一致 ${merged.unchanged}`:"旧クラウド形式（IndexedDBなし）";
@@ -3815,7 +3822,7 @@ function close(){$("cloudSyncLayer")?.classList.remove("open")}
 function saveConfig(){return true}
 async function test(){try{await fetchRemote();setState("ready","接続OKです。共有ID: "+CFG.workspace);return true}catch(e){setState("error","接続失敗: "+(e.message||e),e.message||String(e));return false}}
 function getState(){return{state,configured:true,workspace:CFG.workspace,error:lastError,busy}}
-window.CloudSyncApp={open,close,saveConfig,test,push,pull:()=>pull({automatic:false,confirmOverwrite:true}),loginPull:()=>pull({automatic:true,confirmOverwrite:false}),disable(){},collect,validatePayload,mergeRemoteScrims,getState,getClient:sb,getConfig:()=>({...CFG,table:TABLE}),get lastError(){return lastError}};
+window.CloudSyncApp={open,close,saveConfig,test,push,pull:()=>pull({automatic:false,confirmOverwrite:true}),loginPull:()=>pull({automatic:true,confirmOverwrite:false}),realtimePull:()=>pull({automatic:true,confirmOverwrite:false}),disable(){},collect,validatePayload,mergeRemoteScrims,getState,getClient:sb,getConfig:()=>({...CFG,table:TABLE}),getSyncIdentity:()=>({clientId:getClientId(),lastRevision:window.ApexDataCore?.read?.("apexCloudLastRevision","")||""}),get lastError(){return lastError}};
 })();</script>
 <script id="cloud-sync-manager-v340">(()=>{"use strict";
 const AUTO_DELAY=5000,RETRY_DELAY=12000;
@@ -3868,63 +3875,62 @@ function start(){if(started)return;started=true;wrapCore();wrapLocalStorage();wi
 window.CloudSyncManager={start,schedule,flush,manualPull,manualPush,loginPull,getState};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
 })();</script>
-<script id="cloud-realtime-passive-monitor-v341">(()=>{"use strict";
-const BASE_RETRY=5000,MAX_RETRY=60000;
-let channel=null,client=null,startPromise=null,retryTimer=0,retryCount=0,started=false,stopped=false,state="idle",lastError="",lastEventAt="",eventCount=0;
+<script id="cloud-realtime-sync-v342">(()=>{"use strict";
+const BASE_RETRY=5000,MAX_RETRY=60000,PULL_DEBOUNCE=900;
+let channel=null,client=null,startPromise=null,retryTimer=0,pullTimer=0,retryCount=0,started=false,stopped=false,state="idle",lastError="",lastEventAt="",eventCount=0,ignoredCount=0,pullCount=0,pullRunning=false,pendingNotification=null,lastAppliedRevision="",lastAppliedUpdatedAt="";
 function config(){return window.CloudSyncApp?.getConfig?.()||null}
-function snapshot(){const cfg=config();return{state,passive:true,connected:state==="subscribed",started,workspace:cfg?.workspace||"",table:cfg?.table||"",lastEventAt,eventCount,error:lastError,retryCount}}
+function identity(){return window.CloudSyncApp?.getSyncIdentity?.()||{clientId:"",lastRevision:""}}
+function snapshot(){const cfg=config();return{state,passive:false,connected:state==="subscribed",started,workspace:cfg?.workspace||"",table:cfg?.table||"",lastEventAt,eventCount,ignoredCount,pullCount,pullRunning,lastAppliedRevision,lastAppliedUpdatedAt,error:lastError,retryCount}}
 function emit(reason="state"){window.dispatchEvent(new CustomEvent("apex:cloud-realtime-state",{detail:{...snapshot(),reason}}))}
 function setState(next,error="",reason="state"){state=next;lastError=String(error||"");emit(reason)}
 function clearRetry(){if(retryTimer){clearTimeout(retryTimer);retryTimer=0}}
+function clearPullTimer(){if(pullTimer){clearTimeout(pullTimer);pullTimer=0}}
 function retryDelay(){return Math.min(MAX_RETRY,BASE_RETRY*Math.max(1,2**Math.min(retryCount,4)))}
-function scheduleReconnect(reason="retry"){
- if(stopped||navigator.onLine===false)return false;
- clearRetry();retryCount++;const delay=retryDelay();
- setState("reconnecting",lastError,reason);
- retryTimer=setTimeout(()=>{retryTimer=0;connect(true)},delay);return true
+function scheduleReconnect(reason="retry"){if(stopped||navigator.onLine===false)return false;clearRetry();retryCount++;const delay=retryDelay();setState("reconnecting",lastError,reason);retryTimer=setTimeout(()=>{retryTimer=0;connect(true)},delay);return true}
+async function removeChannel(){const old=channel;channel=null;if(!old)return;try{if(client?.removeChannel)await client.removeChannel(old);else old.unsubscribe?.()}catch(error){console.warn("[APEX ORACLE] Realtimeチャンネル解除失敗",error)}}
+function rowMeta(row){const data=row?.data;return data&&typeof data==="object"?(data.syncMeta||null):null}
+function shouldIgnore(row){
+ const meta=rowMeta(row),own=identity(),updatedAt=String(row?.updated_at||"");
+ if(meta?.clientId&&own.clientId&&String(meta.clientId)===String(own.clientId))return"self-client";
+ if(meta?.revision&&(String(meta.revision)===String(own.lastRevision||"")||String(meta.revision)===String(lastAppliedRevision||"")))return"known-revision";
+ if(updatedAt&&lastAppliedUpdatedAt&&Date.parse(updatedAt)<=Date.parse(lastAppliedUpdatedAt))return"old-updated-at";
+ return"";
 }
-async function removeChannel(){
- const old=channel;channel=null;
- if(!old)return;
- try{if(client?.removeChannel)await client.removeChannel(old);else old.unsubscribe?.()}catch(error){console.warn("[APEX ORACLE] Realtimeチャンネル解除失敗",error)}
+function schedulePull(notification){pendingNotification=notification;clearPullTimer();pullTimer=setTimeout(()=>{pullTimer=0;runPull()},PULL_DEBOUNCE);emit("pull-scheduled")}
+async function runPull(){
+ if(pullRunning){return false}
+ const notice=pendingNotification;if(!notice)return false;pendingNotification=null;
+ if(!window.CloudSyncApp?.realtimePull){setState("error","Realtime取得APIを利用できません","missing-pull-api");return false}
+ pullRunning=true;setState("pulling","","pull-start");
+ try{
+  const ok=await window.CloudSyncApp.realtimePull();
+  if(!ok){const cloud=window.CloudSyncApp?.getState?.();throw new Error(cloud?.error||window.CloudSyncApp?.lastError||"Realtime取得に失敗しました")}
+  pullCount++;lastAppliedRevision=String(notice.revision||"");lastAppliedUpdatedAt=String(notice.updatedAt||"");
+  console.info("[APEX ORACLE] Realtimeデータ反映完了",{revision:lastAppliedRevision,updatedAt:lastAppliedUpdatedAt});
+  window.ApexVisibleRefreshV353?.schedule?.("realtime-pull",80);
+  window.dispatchEvent(new CustomEvent("apex:cloud-realtime-applied",{detail:{revision:lastAppliedRevision,updatedAt:lastAppliedUpdatedAt,pullCount}}));
+  setState("subscribed","","pull-complete");return true;
+ }catch(error){lastError=error?.message||String(error);setState("error",lastError,"pull-error");return false}
+ finally{pullRunning=false;if(pendingNotification)schedulePull(pendingNotification)}
 }
 function handlePayload(payload){
- eventCount++;lastEventAt=new Date().toISOString();
- const cfg=config(),row=payload?.new||payload?.record||{};
+ eventCount++;lastEventAt=new Date().toISOString();const cfg=config(),row=payload?.new||payload?.record||{};
  if(row.workspace_id&&cfg?.workspace&&String(row.workspace_id)!==String(cfg.workspace))return;
- console.info("[APEX ORACLE] Realtime通知を受信（監視のみ・データ取得なし）",{eventType:payload?.eventType||"UPDATE",workspace:cfg?.workspace,updatedAt:row.updated_at||""});
- emit("notification-passive");
- window.dispatchEvent(new CustomEvent("apex:cloud-realtime-notification",{detail:{passive:true,eventType:payload?.eventType||"UPDATE",workspace:cfg?.workspace||"",updatedAt:String(row.updated_at||""),receivedAt:lastEventAt}}))
+ const meta=rowMeta(row),updatedAt=String(row.updated_at||""),reason=shouldIgnore(row);
+ if(reason){ignoredCount++;console.info("[APEX ORACLE] Realtime通知を除外",{reason,revision:meta?.revision||"",updatedAt});emit("notification-ignored");return}
+ const notification={eventType:payload?.eventType||"UPDATE",workspace:cfg?.workspace||"",updatedAt,receivedAt:lastEventAt,revision:String(meta?.revision||""),sourceClientId:String(meta?.clientId||"")};
+ console.info("[APEX ORACLE] Realtime通知を受信・安全取得を予約",notification);
+ window.dispatchEvent(new CustomEvent("apex:cloud-realtime-notification",{detail:{...notification,passive:false}}));schedulePull(notification)
 }
 async function connect(force=false){
- if(stopped||navigator.onLine===false)return false;
- if(startPromise&&!force)return startPromise;
- if(channel&&!force&&(state==="connecting"||state==="subscribed"))return true;
- startPromise=(async()=>{
-  const cfg=config();
-  if(!cfg?.workspace||!cfg?.table||!window.CloudSyncApp?.getClient){setState("unavailable","クラウド同期設定を取得できません","missing-config");return false}
-  await removeChannel();setState("connecting","","connect");
-  try{
-   client=await window.CloudSyncApp.getClient();
-   const name=`apex-oracle-passive-${String(cfg.workspace).replace(/[^a-zA-Z0-9_-]/g,"-")}`;
-   channel=client.channel(name,{config:{broadcast:{self:false}}})
-    .on("postgres_changes",{event:"UPDATE",schema:"public",table:cfg.table,filter:`workspace_id=eq.${cfg.workspace}`},handlePayload)
-    .subscribe(status=>{
-      if(status==="SUBSCRIBED"){retryCount=0;clearRetry();setState("subscribed","","subscribed");console.info("[APEX ORACLE] Realtime監視接続完了（監視のみ）",{table:cfg.table,workspace:cfg.workspace})}
-      else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){lastError=`Realtime ${status}`;setState("error",lastError,status.toLowerCase());scheduleReconnect(status.toLowerCase())}
-      else if(status==="CLOSED"&&!stopped){setState("closed","","closed");scheduleReconnect("closed")}
-    });
-   return true
-  }catch(error){lastError=error?.message||String(error);setState("error",lastError,"connect-error");scheduleReconnect("connect-error");return false}
-  finally{startPromise=null}
- })();return startPromise
+ if(stopped||navigator.onLine===false)return false;if(startPromise&&!force)return startPromise;if(channel&&!force&&(state==="connecting"||state==="subscribed"||state==="pulling"))return true;
+ startPromise=(async()=>{const cfg=config();if(!cfg?.workspace||!cfg?.table||!window.CloudSyncApp?.getClient){setState("unavailable","クラウド同期設定を取得できません","missing-config");return false}await removeChannel();setState("connecting","","connect");try{client=await window.CloudSyncApp.getClient();const name=`apex-oracle-realtime-${String(cfg.workspace).replace(/[^a-zA-Z0-9_-]/g,"-")}`;channel=client.channel(name,{config:{broadcast:{self:false}}}).on("postgres_changes",{event:"UPDATE",schema:"public",table:cfg.table,filter:`workspace_id=eq.${cfg.workspace}`},handlePayload).subscribe(status=>{if(status==="SUBSCRIBED"){retryCount=0;clearRetry();setState("subscribed","","subscribed");console.info("[APEX ORACLE] Realtime同期接続完了",{table:cfg.table,workspace:cfg.workspace})}else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){lastError=`Realtime ${status}`;setState("error",lastError,status.toLowerCase());scheduleReconnect(status.toLowerCase())}else if(status==="CLOSED"&&!stopped){setState("closed","","closed");scheduleReconnect("closed")}});return true}catch(error){lastError=error?.message||String(error);setState("error",lastError,"connect-error");scheduleReconnect("connect-error");return false}finally{startPromise=null}})();return startPromise
 }
-function start(){if(started)return connect();started=true;stopped=false;window.addEventListener("online",()=>connect(true));window.addEventListener("offline",()=>{clearRetry();setState("offline","","offline")});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state!=="subscribed")connect(true)});window.addEventListener("apex:auth-ready",event=>{if(event?.detail?.loggedIn===false)return;connect()});setTimeout(()=>connect(),800);return true}
-async function stop(){stopped=true;started=false;clearRetry();await removeChannel();setState("stopped","","stop");return true}
-window.CloudRealtimeMonitor={start,stop,reconnect:()=>connect(true),getState:snapshot};
+function start(){if(started)return connect();started=true;stopped=false;window.addEventListener("online",()=>connect(true));window.addEventListener("offline",()=>{clearRetry();clearPullTimer();setState("offline","","offline")});document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state!=="subscribed"&&state!=="pulling")connect(true)});window.addEventListener("apex:auth-ready",event=>{if(event?.detail?.loggedIn===false)return;connect()});setTimeout(()=>connect(),800);return true}
+async function stop(){stopped=true;started=false;clearRetry();clearPullTimer();pendingNotification=null;await removeChannel();setState("stopped","","stop");return true}
+window.CloudRealtimeMonitor={start,stop,reconnect:()=>connect(true),pullNow:runPull,getState:snapshot};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
-})();
-</script><script id="header-cloud-v330">
+})();</script><script id="header-cloud-v330">
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
