@@ -3685,11 +3685,11 @@ window.ApexRuntimeV280={
 <script id="cloud-manager-v338-indexeddb-images-safe">(()=>{"use strict";
 const TABLE="apex_nexus_cloud_data",CFG=Object.freeze({url:"https://mmlkgwucvcpmtziwikfk.supabase.co",key:"sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC",workspace:"apex-team-01"});
 let client,loader,busy=false,state="idle",lastError="";
-const CLIENT_ID_KEY="apexCloudRealtimeClientIdV1";
+let pageClientId="",pageLastPushedRevision="";
 const $=id=>document.getElementById(id),now=()=>new Date().toISOString();
 function randomId(){try{return crypto.randomUUID()}catch(_){return `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`}}
-function getClientId(){let id="";try{id=localStorage.getItem(CLIENT_ID_KEY)||"";if(!id){id=randomId();localStorage.setItem(CLIENT_ID_KEY,id)}}catch(_){id=id||randomId()}return id}
-function createSyncMeta(){return{clientId:getClientId(),revision:randomId(),createdAt:now()}}
+function getClientId(){if(!pageClientId)pageClientId=randomId();return pageClientId}
+function createSyncMeta(){const meta={clientId:getClientId(),revision:randomId(),createdAt:now()};pageLastPushedRevision=meta.revision;return meta}
 const clone=value=>typeof structuredClone==="function"?structuredClone(value):JSON.parse(JSON.stringify(value));
 const LOCAL_ONLY_KEYS=new Set(["apexIntegratedActiveApp","apexIntegratedScrimPage","apexIntegratedTrackerPage","apexActiveBuild","apexLastTeamAnalysisTeamV1"]);function excluded(k){return!k||LOCAL_ONLY_KEYS.has(k)||k.startsWith("apexCloud")||k.startsWith("apexDataSafety::")||/Login|CurrentRole|PermissionRole|IntegrityAudit/i.test(k)}
 function keys(){const a=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("apex")&&!excluded(k))a.push(k)}return a.sort()}
@@ -3714,7 +3714,7 @@ async function collect(syncMeta=null){
   const normalized=sets.map(normalizeScrim);
   const scrimBlock={database:"ApexOracleDB",store:"scrims",schemaVersion:1,count:normalized.length,matchCount:normalized.reduce((n,r)=>n+(Array.isArray(r.matches)?r.matches.length:0),0),contentHash:hashValue(normalized),sets:normalized};
   const [legendImages,lootRouteImages]=await Promise.all([collectLegendImages(),collectLootImages()]);
-  return{app:"APEX ORACLE",version:"cloud-v342-realtime-safe",updatedAt:now(),syncMeta:syncMeta||createSyncMeta(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages,lootRouteImages}};
+  return{app:"APEX ORACLE",version:"cloud-v343-realtime-tab-safe",updatedAt:now(),syncMeta:syncMeta||createSyncMeta(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages,lootRouteImages}};
 }
 function validatePayload(payload){
   if(!payload||typeof payload!=="object")throw new Error("クラウドデータ本体が不正です");
@@ -3754,6 +3754,7 @@ async function push(){
     writeMeta("apexCloudLastLocalHash",payload.integrity?.overallHash||"","cloud-push-hash");
     writeMeta("apexCloudLastScrimHash",payload.indexedDB?.scrims?.contentHash||"","cloud-push-scrim-hash");
     writeMeta("apexCloudLastRevision",syncMeta.revision,"cloud-push-revision");
+    pageLastPushedRevision=syncMeta.revision;
     window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t}}));
     setState("ready",`クラウド更新完了（スクリム ${payload.indexedDB.scrims.count}セット / ${payload.indexedDB.scrims.matchCount}試合・レジェンド画像 ${payload.indexedDB.legendImages.count}件・漁りルート画像 ${payload.indexedDB.lootRouteImages.count}件）`);
     return true;
@@ -3822,7 +3823,7 @@ function close(){$("cloudSyncLayer")?.classList.remove("open")}
 function saveConfig(){return true}
 async function test(){try{await fetchRemote();setState("ready","接続OKです。共有ID: "+CFG.workspace);return true}catch(e){setState("error","接続失敗: "+(e.message||e),e.message||String(e));return false}}
 function getState(){return{state,configured:true,workspace:CFG.workspace,error:lastError,busy}}
-window.CloudSyncApp={open,close,saveConfig,test,push,pull:()=>pull({automatic:false,confirmOverwrite:true}),loginPull:()=>pull({automatic:true,confirmOverwrite:false}),realtimePull:()=>pull({automatic:true,confirmOverwrite:false}),disable(){},collect,validatePayload,mergeRemoteScrims,getState,getClient:sb,getConfig:()=>({...CFG,table:TABLE}),getSyncIdentity:()=>({clientId:getClientId(),lastRevision:window.ApexDataCore?.read?.("apexCloudLastRevision","")||""}),get lastError(){return lastError}};
+window.CloudSyncApp={open,close,saveConfig,test,push,pull:()=>pull({automatic:false,confirmOverwrite:true}),loginPull:()=>pull({automatic:true,confirmOverwrite:false}),realtimePull:()=>pull({automatic:true,confirmOverwrite:false}),disable(){},collect,validatePayload,mergeRemoteScrims,getState,getClient:sb,getConfig:()=>({...CFG,table:TABLE}),getSyncIdentity:()=>({clientId:getClientId(),lastRevision:pageLastPushedRevision||""}),get lastError(){return lastError}};
 })();</script>
 <script id="cloud-sync-manager-v340">(()=>{"use strict";
 const AUTO_DELAY=5000,RETRY_DELAY=12000;
@@ -3875,7 +3876,7 @@ function start(){if(started)return;started=true;wrapCore();wrapLocalStorage();wi
 window.CloudSyncManager={start,schedule,flush,manualPull,manualPush,loginPull,getState};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(start,0),{once:true});else setTimeout(start,0);
 })();</script>
-<script id="cloud-realtime-sync-v342">(()=>{"use strict";
+<script id="cloud-realtime-sync-v343">(()=>{"use strict";
 const BASE_RETRY=5000,MAX_RETRY=60000,PULL_DEBOUNCE=900;
 let channel=null,client=null,startPromise=null,retryTimer=0,pullTimer=0,retryCount=0,started=false,stopped=false,state="idle",lastError="",lastEventAt="",eventCount=0,ignoredCount=0,pullCount=0,pullRunning=false,pendingNotification=null,lastAppliedRevision="",lastAppliedUpdatedAt="";
 function config(){return window.CloudSyncApp?.getConfig?.()||null}
