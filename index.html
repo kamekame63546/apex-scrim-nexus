@@ -3752,6 +3752,7 @@ async function fetchAssetRemote(type){const workspace=ASSET_ROWS[type];if(!works
 function role(){try{return String(JSON.parse(localStorage.getItem("apexSecureLoginUserV290")||"null")?.role||"").toLowerCase()}catch(_){return""}}
 async function push(){
   if(busy)return false;
+  const pushStartedAt=performance.now();
   if(!["admin","管理者"].includes(role()))return setState("error","クラウド更新は管理者のみ実行できます。","管理者権限が必要です"),false;
   busy=true;
   try{
@@ -3773,7 +3774,7 @@ async function push(){
     writeMeta("apexCloudLastLootHash",lootScan.manifest.contentHash||"","cloud-push-loot-hash");
     writeMeta("apexCloudLastRevision",syncMeta.revision,"cloud-push-revision");
     pageLastPushedRevision=syncMeta.revision;
-    window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t,imageDelta:{legendImages:legendChanged,lootRouteImages:lootChanged}}}));
+    window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t,durationMs:Math.round(performance.now()-pushStartedAt),scrims:{count:payload.indexedDB.scrims.count,matchCount:payload.indexedDB.scrims.matchCount},imageDelta:{legendImages:legendChanged,lootRouteImages:lootChanged}}}));
     const imageState=`画像送信：レジェンド ${legendChanged?"更新":"省略"}・漁りルート ${lootChanged?"更新":"省略"}`;
     setState("ready",`クラウド更新完了（スクリム ${payload.indexedDB.scrims.count}セット / ${payload.indexedDB.scrims.matchCount}試合・${imageState}）`);
     return true;
@@ -3885,7 +3886,7 @@ async function manualPush(){
  const st=baseState();if(!st.configured){alert("Supabase設定がありません。先にクラウド設定を保存してください。");window.CloudSyncApp?.open?.();return false}
  if(!confirm("現在のローカルデータをクラウドへ更新します。\n\nこのまま更新しますか？"))return false;
  const btn=document.getElementById("headerCloudPushBtn");if(btn){btn.disabled=true;btn.textContent="更新中…"}
- try{const ok=await window.CloudSyncApp.push();if(ok){dirty=false;pending.clear();lastSyncAt=new Date().toISOString();alert("クラウド更新が完了しました。")}else if(baseState().state==="error")alert("クラウド更新を完了できませんでした。\n"+(window.CloudSyncApp.lastError||document.getElementById("cloudStatus")?.textContent||"更新を中止しました。"));return ok}
+ try{const ok=await window.CloudSyncApp.push();if(ok){dirty=false;pending.clear();lastSyncAt=new Date().toISOString();}else if(baseState().state==="error")alert("クラウド更新を完了できませんでした。\n"+(window.CloudSyncApp.lastError||document.getElementById("cloudStatus")?.textContent||"更新を中止しました。"));return ok}
  catch(e){alert("クラウド更新に失敗しました。\n"+(e.message||e));return false}
  finally{if(btn){btn.disabled=false;btn.textContent="クラウド更新"}emit()}
 }
@@ -5842,5 +5843,23 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
 </script>
 
 
+
+<style id="cloud-sync-result-toast-style">
+#cloudSyncResultToast{position:fixed;top:18px;right:18px;z-index:2147483000;width:min(390px,calc(100vw - 36px));padding:15px 16px;border:1px solid #2f4569;border-radius:14px;background:linear-gradient(180deg,rgba(14,25,48,.98),rgba(8,16,33,.98));box-shadow:0 16px 45px rgba(0,0,0,.42);color:#eaf2ff;font-family:inherit;opacity:0;transform:translateY(-12px);pointer-events:none;transition:opacity .22s ease,transform .22s ease}
+#cloudSyncResultToast.show{opacity:1;transform:translateY(0);pointer-events:auto}
+#cloudSyncResultToast.error{border-color:#a94452;background:linear-gradient(180deg,rgba(64,21,31,.98),rgba(34,13,20,.98))}
+#cloudSyncResultToast .csr-title{font-size:15px;font-weight:900;margin-bottom:9px;letter-spacing:.02em}
+#cloudSyncResultToast .csr-grid{display:grid;grid-template-columns:1fr auto;gap:6px 14px;font-size:12px;line-height:1.45}
+#cloudSyncResultToast .csr-label{color:#aebddb}#cloudSyncResultToast .csr-value{font-weight:800;text-align:right;color:#fff}
+#cloudSyncResultToast .csr-close{position:absolute;top:8px;right:10px;border:0;background:transparent;color:#9fb0cd;font-size:18px;cursor:pointer;padding:2px 5px}
+</style>
+<script id="cloud-sync-result-toast-v1">(()=>{"use strict";
+let timer=0,lastState="";
+function ensure(){let el=document.getElementById("cloudSyncResultToast");if(el)return el;el=document.createElement("div");el.id="cloudSyncResultToast";el.setAttribute("role","status");el.innerHTML='<button class="csr-close" type="button" aria-label="閉じる">×</button><div class="csr-title"></div><div class="csr-grid"></div>';el.querySelector(".csr-close").addEventListener("click",hide);document.body.appendChild(el);return el}
+function hide(){const el=document.getElementById("cloudSyncResultToast");if(el)el.classList.remove("show");clearTimeout(timer)}
+function show(title,rows,error=false,ms=6500){const el=ensure();el.classList.toggle("error",!!error);el.querySelector(".csr-title").textContent=title;el.querySelector(".csr-grid").innerHTML=rows.map(([a,b])=>`<div class="csr-label">${a}</div><div class="csr-value">${b}</div>`).join("");requestAnimationFrame(()=>el.classList.add("show"));clearTimeout(timer);timer=setTimeout(hide,ms)}
+window.addEventListener("apex:cloud-push-complete",e=>{const d=e.detail||{},img=d.imageDelta||{},scr=d.scrims||{};show("クラウド更新完了",[["スクリム",`${scr.count??0}セット / ${scr.matchCount??0}試合`],["レジェンド画像",img.legendImages?"更新":"変更なし（送信省略）"],["漁りルート画像",img.lootRouteImages?"更新":"変更なし（送信省略）"],["更新時間",`${((d.durationMs||0)/1000).toFixed(2)}秒`]])});
+window.addEventListener("apex:cloud-state",e=>{const d=e.detail||{};if(d.state==="error"&&lastState!=="error")show("クラウド更新エラー",[["内容",d.error||"更新を完了できませんでした"]],true,9000);lastState=d.state||""});
+})();</script>
 </body>
 </html>
