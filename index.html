@@ -1517,7 +1517,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <button class="pageTab" data-app="admin" data-page="registration" onclick="window.LootRouteApp?.leave?.();IntegratedApp.registration()">データ登録</button>
 <button class="pageTab" data-app="admin" data-page="lootRouteAdmin" onclick="LootRouteApp.showAdmin()">漁りルート登録</button>
 <button class="pageTab" data-app="admin" data-page="fightRecord" onclick="window.LootRouteApp?.leave?.();FightRecordAdmin.show()">ファイト登録</button>
-<button class="pageTab" data-app="admin" data-page="scrimRegister" onclick="window.LootRouteApp?.leave?.();window.ScrimRegisterAdmin?.show?.('normal');requestAnimationFrame(()=&gt;window.FightNtImportV360?.show?.())">スクリム登録</button>
+<button class="pageTab" data-app="admin" data-page="scrimRegister" id="openScrimRegisterBtn" type="button">スクリム登録</button>
 <button class="pageTab" data-app="admin" data-page="zoneRegister" onclick="window.LootRouteApp?.leave?.();ManualZoneAdmin.show()">最終安置登録</button>
 <button class="pageTab" data-app="admin" data-page="ringConsoleAdmin" onclick="window.LootRouteApp?.leave?.();RingConsoleCleanV164.showAdmin()">リングコンソール登録</button>
 </div>
@@ -2019,53 +2019,6 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
  #teamPanel{display:grid;gap:2px}.teamRow{display:grid;grid-template-columns:22px minmax(84px,1.15fr) minmax(55px,.72fr) minmax(55px,.72fr) 24px 24px 24px 24px;gap:3px;min-height:21px;padding:2px 4px;border:1px solid rgba(255,255,255,.065);border-radius:7px;background:rgba(255,255,255,.025);font-size:9.8px;line-height:1.02;align-items:center;text-align:center}
  .teamHead{background:var(--head);color:#bfd0f3;font-size:9.4px;font-weight:900}.teamRow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:18px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;color:var(--muted);font-size:11px;text-align:center}
  </style></head><body><div class="wrap"><div class="sortbar"><div><div class="label">表示</div><div class="context" id="teamContext">登録済みスクリムを選択してください</div></div><label class="label">並び替え<select id="integratedTeamSort"><option value="rankAsc" selected>Place順</option><option value="num">番号順</option><option value="name">チーム名順</option><option value="tpDesc">TP高い順</option><option value="kpDesc">KP高い順</option><option value="ppDesc">PP高い順</option></select></label></div><div id="teamPanel"><div class="empty">登録済みスクリムを選択してください。</div></div></div>
-<style id="supabase-migration-preflight-style-v1">
-#apexMigrationPreflightBtn{position:fixed;right:18px;bottom:76px;z-index:2147481000;border:1px solid rgba(255,255,255,.18);background:#172033;color:#fff;border-radius:10px;padding:9px 12px;font:600 12px/1.2 system-ui;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.28)}
-#apexMigrationPreflightLayer{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px}
-#apexMigrationPreflightLayer.open{display:flex}.apexMigrationPreflightPanel{width:min(900px,96vw);max-height:88vh;overflow:auto;background:#0f1726;color:#eaf0ff;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
-.apexMigrationPreflightHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.apexMigrationPreflightHead h2{margin:0;font-size:20px}.apexMigrationPreflightClose{border:0;background:transparent;color:#fff;font-size:25px;cursor:pointer}.apexMigrationPreflightNotice{margin:12px 0;padding:11px;border-radius:10px;background:#14243a;color:#cfe2ff}.apexMigrationPreflightTable{width:100%;border-collapse:collapse;font-size:12px}.apexMigrationPreflightTable th,.apexMigrationPreflightTable td{border-bottom:1px solid rgba(255,255,255,.1);padding:8px;text-align:left;vertical-align:top}.apexMigrationPreflightTable th{color:#9fb4d4}.preflight-ok{color:#8ef0ae}.preflight-warn{color:#ffd27a}.preflight-bad{color:#ff8f8f}.apexMigrationPreflightActions{display:flex;gap:8px;margin-top:14px}.apexMigrationPreflightActions button{border:1px solid rgba(255,255,255,.16);background:#1b2a42;color:#fff;border-radius:9px;padding:9px 12px;cursor:pointer}
-</style>
-<button id="apexMigrationPreflightBtn" type="button" onclick="ApexSupabasePreflight.open()">Supabase移行準備確認</button>
-<div id="apexMigrationPreflightLayer" aria-hidden="true"><div class="apexMigrationPreflightPanel"><div class="apexMigrationPreflightHead"><h2>Supabase移行準備確認（読取専用）</h2><button class="apexMigrationPreflightClose" type="button" onclick="ApexSupabasePreflight.close()">×</button></div><div id="apexMigrationPreflightBody" class="apexMigrationPreflightNotice">未確認です。</div></div></div>
-<script id="supabase-migration-preflight-v1">
-(()=>{"use strict";
- const CFG=Object.freeze({url:"https://mmlkgwucvcpmtziwikfk.supabase.co",key:"sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC",workspace:"apex-team-01"});
- const TABLES=["apex_nexus_cloud_data","workspaces","workspace_members","scrims","fight_matches","final_zones","ring_console","master_data","sync_migrations"];
- const esc=v=>String(v??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;"}[c]));
- async function probe(table){
-   const url=`${CFG.url}/rest/v1/${encodeURIComponent(table)}?select=*&limit=1`;
-   try{
-     const r=await fetch(url,{method:"GET",headers:{apikey:CFG.key,Authorization:`Bearer ${CFG.key}`,Accept:"application/json"},cache:"no-store"});
-     let body="";try{body=await r.text()}catch(_){ }
-     let note="";try{const j=JSON.parse(body||"null");note=Array.isArray(j)?`読取可能（${j.length}件返却）`:(j?.message||j?.hint||body||"")}catch(_){note=body||""}
-     let status="bad",label=`HTTP ${r.status}`;
-     if(r.ok){status="ok";label="存在・読取可能"}
-     else if(r.status===401||r.status===403){status="warn";label="存在する可能性／認証・RLSで拒否"}
-     else if(r.status===404){status="bad";label="未作成または公開対象外"}
-     return{table,status,label,http:r.status,note:String(note).slice(0,240)};
-   }catch(e){return{table,status:"bad",label:"通信失敗",http:0,note:e?.message||String(e)}}
- }
- async function run(){
-   const body=document.getElementById("apexMigrationPreflightBody");
-   body.innerHTML="接続先とテーブルをGETのみで確認中です。書き込み・更新・削除は行いません。";
-   const authSession=!!localStorage.getItem("apexSecureLoginSessionV290");
-   const results=[];for(const t of TABLES)results.push(await probe(t));
-   const newTables=results.filter(x=>x.table!=="apex_nexus_cloud_data"), readable=newTables.filter(x=>x.status==="ok").length, blocked=newTables.filter(x=>x.status==="warn").length;
-   const authWarning=!window.supabase?.auth?.getSession;
-   const recommendation=readable===newTables.length?"新テーブルは読取可能です。次は件数0の確認と一方向コピー準備へ進めます。":blocked?"新テーブルは存在していても、現在の独自ログインとSupabase Auth/RLSが接続されていない可能性があります。書込み移行はまだ開始しません。":"新テーブルが未作成の可能性があります。保存済みSQLをSupabase SQL Editorで実行する段階です。";
-   body.className="";
-   body.innerHTML=`<div class="apexMigrationPreflightNotice"><b>判定：</b>${esc(recommendation)}<br><small>独自ログイン状態: ${authSession?"あり":"なし"} ／ Supabase Authクライアント: ${authWarning?"未確認":"利用可能"}</small></div><table class="apexMigrationPreflightTable"><thead><tr><th>テーブル</th><th>判定</th><th>HTTP</th><th>詳細</th></tr></thead><tbody>${results.map(x=>`<tr><td>${esc(x.table)}</td><td class="preflight-${x.status}">${esc(x.label)}</td><td>${x.http||"-"}</td><td>${esc(x.note)}</td></tr>`).join("")}</tbody></table><div class="apexMigrationPreflightActions"><button type="button" onclick="ApexSupabasePreflight.run()">再確認</button><button type="button" onclick="ApexSupabasePreflight.exportReport()">結果を保存</button></div><div class="apexMigrationPreflightNotice">この確認はREST APIへのGETのみです。IndexedDB、localStorage、Supabaseのレコードを変更しません。</div>`;
-   window.__ApexSupabasePreflight={measuredAt:new Date().toISOString(),config:{url:CFG.url,workspace:CFG.workspace,key:"[REDACTED]"},localCustomLoginSession:authSession,results,recommendation};
-   return window.__ApexSupabasePreflight;
- }
- function open(){const l=document.getElementById("apexMigrationPreflightLayer");l?.classList.add("open");l?.setAttribute("aria-hidden","false");run()}
- function close(){const l=document.getElementById("apexMigrationPreflightLayer");l?.classList.remove("open");l?.setAttribute("aria-hidden","true")}
- function exportReport(){const d=window.__ApexSupabasePreflight;if(!d)return;const b=new Blob([JSON.stringify(d,null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=`apex-supabase-preflight-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
- document.getElementById("apexMigrationPreflightLayer")?.addEventListener("click",e=>{if(e.target?.id==="apexMigrationPreflightLayer")close()});
- window.ApexSupabasePreflight={open,close,run,exportReport};
-})();
-</script>
-
 </body></html>`;
  if(!teamLoaded||!f.contentDocument?.getElementById("teamPanel")){
   teamLoaded=true;
@@ -2144,7 +2097,57 @@ function showTeamSet(setId){
 }
 function showTab(tab="fightnt"){const selected=["fightnt","normal","poland"].includes(tab)?tab:"fightnt";document.querySelectorAll(".scrimRegTabs button").forEach(btn=>btn.classList.remove("active"));document.querySelectorAll(".scrimRegPane").forEach(pane=>pane.classList.remove("active"));const tabIds={fightnt:"scrimRegTabFightNt",normal:"scrimRegTabNormal",poland:"scrimRegTabPoland"},paneIds={fightnt:"fightNtImportPanel",normal:"normalScrimRegisterPanel",poland:"polandScrimRegisterPanel"};document.getElementById(tabIds[selected])?.classList.add("active");document.getElementById(paneIds[selected])?.classList.add("active");loadTeam();if("normal"===selected)loadNormal();else if("poland"===selected)try{PolandApp.init?.()}catch(e){}else try{FightNtImportV360?.activate?.()}catch(e){}try{ScrimSavedList.render()}catch(e){}}function ensurePanel(){document.querySelectorAll(".homePanel").forEach(p=>p.classList.remove("active"));document.querySelectorAll(".adminPanel").forEach(p=>p.classList.remove("active"));document.getElementById("adminScrimRegister")?.classList.add("active");document.querySelector(".stage")?.classList.add("admin-mode");document.getElementById("frameTracker")?.classList.add("admin-hidden");document.getElementById("frameScrim")?.classList.add("admin-hidden");document.querySelectorAll(".pageTab").forEach(btn=>btn.classList.toggle("active","admin"===btn.dataset.app&&"scrimRegister"===btn.dataset.page));localStorage.setItem("apexIntegratedActiveApp","scrimRegister");const note=document.getElementById("activeNote");if(note)note.textContent="スクリム登録を表示中"}
 function repair(){const normal=document.getElementById("adminScrimRegisterFrame"),team=document.getElementById("adminScrimTeamFrame");if(normal&&!normal.srcdoc&&!normal.contentDocument?.body?.children?.length)loaded=false;if(team&&!team.srcdoc&&!team.contentDocument?.body?.children?.length)teamLoaded=false;if(document.getElementById("adminScrimRegister")?.classList.contains("active")){ensurePanel();const active=document.querySelector(".scrimRegTabs button.active")?.id;const tab=active==="scrimRegTabPoland"?"poland":active==="scrimRegTabNormal"?"normal":"fightnt";try{showTab(tab)}catch(error){console.error("SCRIM_REGISTER_REPAIR_FAILED",error);loadTeam();if(tab==="normal")loadNormal()}}return true}
-return{show:function(tab="fightnt"){ensurePanel();try{showTab(tab)}catch(error){console.error("SCRIM_REGISTER_OPEN_FAILED",error);loaded=false;teamLoaded=false;loadTeam();if(tab==="normal")loadNormal();else if(tab==="poland")try{PolandApp.init?.()}catch(_){}}},showTab:showTab,loadNormal:loadNormal,loadTeam:loadTeam,showTeamSet:showTeamSet,repair:repair,reload:function(){loaded=false;teamLoaded=false;return repair()}}})();</script>
+return{show:function(tab="fightnt"){if(window.ScrimRegisterNavigation)return window.ScrimRegisterNavigation.open(tab);ensurePanel();showTab(tab);return true},showTab:showTab,loadNormal:loadNormal,loadTeam:loadTeam,showTeamSet:showTeamSet,repair:repair,reload:function(){loaded=false;teamLoaded=false;return repair()}}})();</script>
+<script id="scrim-register-navigation-core-v1">
+(()=>{"use strict";
+ let opening=false;
+ const panel=()=>document.getElementById("adminScrimRegister");
+ function hideCompetingViews(){
+  document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active"));
+  document.querySelector(".stage")?.classList.add("admin-mode");
+  document.getElementById("frameTracker")?.classList.add("admin-hidden");
+  document.getElementById("frameScrim")?.classList.add("admin-hidden");
+ }
+ function markActive(){
+  document.querySelectorAll(".sideMenu .pageTab,.sideMenu .appBtn").forEach(el=>el.classList.remove("active"));
+  document.getElementById("openScrimRegisterBtn")?.classList.add("active");
+  localStorage.setItem("apexIntegratedActiveApp","scrimRegister");
+  const note=document.getElementById("activeNote");if(note)note.textContent="スクリム登録を表示中";
+ }
+ async function open(tab="normal"){
+  if(opening)return false;
+  opening=true;
+  try{
+   window.LootRouteApp?.leave?.();
+   hideCompetingViews();
+   const target=panel();
+   if(!target)throw new Error("adminScrimRegisterが見つかりません");
+   target.classList.add("active");
+   markActive();
+   if(!window.ScrimRegisterAdmin)throw new Error("ScrimRegisterAdminが未初期化です");
+   window.ScrimRegisterAdmin.showTab(tab);
+   requestAnimationFrame(()=>{
+    try{window.ScrimRegisterAdmin?.loadTeam?.()}catch(error){console.error("SCRIM_TEAM_INIT_FAILED",error)}
+    if(tab==="normal")try{window.ScrimRegisterAdmin?.loadNormal?.()}catch(error){console.error("SCRIM_NORMAL_INIT_FAILED",error)}
+   });
+   window.dispatchEvent(new CustomEvent("apex:scrim-register-opened",{detail:{tab}}));
+   return true;
+  }catch(error){
+   console.error("SCRIM_REGISTER_OPEN_ROOT_FAILED",error);
+   alert("スクリム登録ページを開けませんでした。\n"+(error?.message||error));
+   return false;
+  }finally{opening=false}
+ }
+ function bind(){
+  const btn=document.getElementById("openScrimRegisterBtn");
+  if(!btn||btn.dataset.scrimNavBound==="1")return;
+  btn.dataset.scrimNavBound="1";
+  btn.addEventListener("click",event=>{event.preventDefault();event.stopImmediatePropagation();open("normal")},true);
+ }
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
+ window.ScrimRegisterNavigation={open,bind};
+})();
+</script>
 <script>const PolandApp=(()=>{let matchCount=12;const pattern={1:1,6:1,7:1,12:1,2:2,5:2,8:2,11:2,3:3,4:3,9:3,10:3},ppMap={1:12,2:9,3:7,4:5,5:4,6:3,7:3,8:2,9:2,10:2,11:1,12:1,13:1,14:1,15:1},esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),uid=()=>"pl_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8),today=()=>(new Date).toISOString().slice(0,10);function pp(p){return ppMap[Number(p)]||0}function readJson(key,fb){return window.ApexDataCore?.readJSON?.(key,fb)??fb}function writeJson(key,v){return window.ApexDataCore?.write?.(key,v,{reason:"poland-write"})??localStorage.setItem(key,JSON.stringify(v))}function unique(a){return[...new Set((a||[]).filter(Boolean))].sort((x,y)=>String(x).localeCompare(String(y),"ja"))}function mapIndex(no){return pattern[((Number(no)||1)-1)%12+1]||1}function selectedMap(no){const idx=mapIndex(no);return document.getElementById("polandMap"+idx)?.value||"未入力"}function fillSelect(id,arr,blank){const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML=(blank?`<option value="">${blank}</option>`:"")+arr.map(v=>`<option>${esc(v)}</option>`).join(""),cur&&(el.value=cur)}function canonicalBlock(v){const raw=String(v??"").normalize("NFKC").trim();if(!raw)return"";const compact=raw.replace(/[\s_-]+/g,"");const m=compact.match(/^(?:block|ブロック)?(\d+)$/i);return m?`Block${Number(m[1])}`:raw.replace(/^block/i,"Block")}function refreshBlockSelect(preferred){const oldEl=document.getElementById("polandBlock");if(!oldEl)return null;const current=canonicalBlock(preferred??oldEl.value??"Block1")==="Block2"?"Block2":"Block1";const el=document.createElement("select");el.id="polandBlock";el.name=oldEl.name||"polandBlock";el.innerHTML='<option value="Block1">Block1</option><option value="Block2">Block2</option>';el.value=current;el.dataset.selectedBlock=current;oldEl.replaceWith(el);return el}function setup(){
  const tracker=readJson("apexV62Clean",{})||{};
  const currentSplit=String(tracker.current||"");
