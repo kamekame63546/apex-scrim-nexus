@@ -1469,6 +1469,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="headerCloudMeta"><span class="headerCloudLabel">Cloud</span><b id="headerCloudState">確認中</b><small id="headerCloudUpdated">最終更新：—</small></div>
 <button id="headerCloudPullBtn" onclick="HeaderCloudPublish.refresh()" type="button">最新データ取得</button>
 <button id="headerCloudPushBtn" onclick="HeaderCloudPublish.publish()" type="button">クラウド更新</button>
+<button id="headerStorageDiagBtn" onclick="ApexStorageDiagnostics.open()" type="button">容量診断</button>
 </div>
 </div>
 </header>
@@ -5779,6 +5780,61 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,0),{once:true});else setTimeout(install,0);
  window.TeamRegistrationPersistenceV354={add:addTeam,read,refresh,install};
+})();
+</script>
+
+<style id="apex-storage-diagnostics-style-v1">
+#headerStorageDiagBtn{height:34px;padding:0 12px;border:1px solid rgba(34,197,94,.48);border-radius:9px;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;font-size:11px;font-weight:950;letter-spacing:.03em;cursor:pointer;white-space:nowrap}
+#headerStorageDiagBtn:hover{filter:brightness(1.08)}
+.storageDiagLayer{position:fixed;inset:0;z-index:100500;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,.72);backdrop-filter:blur(4px);padding:18px}
+.storageDiagLayer.open{display:flex}.storageDiagBox{width:min(920px,96vw);max-height:90vh;overflow:auto;border:1px solid rgba(34,197,94,.45);border-radius:18px;background:linear-gradient(180deg,#121a2b,#0b1020);box-shadow:0 28px 90px rgba(0,0,0,.58)}
+.storageDiagHead{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#121a31;border-bottom:1px solid rgba(255,255,255,.1)}
+.storageDiagHead h2{margin:0;font-size:19px}.storageDiagClose{height:30px;padding:0 12px;border:1px solid #334155;border-radius:10px;background:#18233e;color:#fff;font-weight:900;cursor:pointer}
+.storageDiagBody{padding:16px}.storageDiagNotice{margin:0 0 14px;padding:10px 12px;border:1px solid rgba(34,197,94,.28);border-radius:12px;background:rgba(34,197,94,.07);color:#bbf7d0;font-size:12px;line-height:1.65;font-weight:800}
+.storageDiagGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.storageDiagMetric{border:1px solid #26344f;border-radius:14px;background:#0d1426;padding:12px;text-align:center}.storageDiagMetric span{display:block;color:#94a5c4;font-size:11px;font-weight:900}.storageDiagMetric b{display:block;margin-top:5px;font-size:21px;color:#f8fafc}.storageDiagMetric small{display:block;margin-top:4px;color:#94a5c4;font-size:10px;line-height:1.45}
+.storageDiagSection{margin-top:14px;border:1px solid #26344f;border-radius:14px;background:#0b1223;overflow:hidden}.storageDiagSection h3{margin:0;padding:10px 12px;background:#121a31;font-size:14px;color:#dbeafe}.storageDiagTable{width:100%;border-collapse:collapse;font-size:12px}.storageDiagTable th,.storageDiagTable td{padding:8px;border-bottom:1px solid rgba(255,255,255,.075);text-align:center}.storageDiagTable th{color:#bfd0f3}.storageDiagActions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.storageDiagActions button{height:34px;padding:0 12px;border-radius:10px;border:1px solid #334155;color:#fff;font-weight:900;cursor:pointer}.storageDiagRefresh{background:linear-gradient(135deg,#22c55e,#15803d)}.storageDiagExport{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+.storageDiagError{padding:16px;color:#fecaca;font-weight:850;line-height:1.7}.storageDiagMuted{color:#94a5c4;font-size:11px;line-height:1.6;margin-top:10px}
+@media(max-width:760px){.storageDiagGrid{grid-template-columns:1fr}.storageDiagTable{font-size:11px}}
+</style>
+<div class="storageDiagLayer" id="storageDiagLayer" aria-hidden="true">
+ <div class="storageDiagBox" role="dialog" aria-modal="true" aria-labelledby="storageDiagTitle">
+  <div class="storageDiagHead"><h2 id="storageDiagTitle">保存容量診断</h2><button class="storageDiagClose" type="button" onclick="ApexStorageDiagnostics.close()">閉じる</button></div>
+  <div class="storageDiagBody" id="storageDiagBody"><div class="storageDiagNotice">計測中です。データの追加・更新・削除は行いません。</div></div>
+ </div>
+</div>
+<script id="apex-storage-diagnostics-v1">
+(()=>{"use strict";
+ const TARGET_BYTES=500*1024*1024;
+ const enc=new TextEncoder();
+ const fmtBytes=n=>{n=Number(n)||0;if(n<1024)return `${n.toLocaleString()} B`;if(n<1024**2)return `${(n/1024).toFixed(2)} KB`;if(n<1024**3)return `${(n/1024**2).toFixed(2)} MB`;return `${(n/1024**3).toFixed(2)} GB`};
+ const fmtNum=n=>(Number(n)||0).toLocaleString();
+ const text=v=>String(v??"").trim();
+ const jsonBytes=v=>enc.encode(JSON.stringify(v??null)).byteLength;
+ const escapeHtml=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ function localStorageStats(){let bytes=0,keys=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||"",v=localStorage.getItem(k)||"";bytes+=enc.encode(k).byteLength+enc.encode(v).byteLength;keys++}return{bytes,keys}}
+ function dateKey(record){const raw=text(record?.date||record?.createdAt||record?.updatedAt);const m=raw.match(/^(\d{4})[-\/]?(\d{2})[-\/]?(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:""}
+ function growthStats(records){const byDay=new Map();for(const r of records){const d=dateKey(r);if(!d)continue;const b=jsonBytes(r);byDay.set(d,(byDay.get(d)||0)+b)}const rows=[...byDay].sort((a,b)=>a[0].localeCompare(b[0]));const recent=rows.slice(-30);const avg=recent.length?recent.reduce((s,x)=>s+x[1],0)/recent.length:0;return{rows,avg,days:recent.length}}
+ function projection(current,perDay){if(!perDay)return{days:null,date:null};const remain=Math.max(0,TARGET_BYTES-current),days=Math.ceil(remain/perDay),d=new Date();d.setDate(d.getDate()+days);return{days,date:d.toISOString().slice(0,10)}}
+ async function measure(){await window.ApexScrimDB?.ready?.();const sets=await window.ApexScrimDB?.getSets?.()||[];const matches=sets.reduce((n,r)=>n+(Array.isArray(r?.matches)?r.matches.length:0),0);const scrimBytes=jsonBytes(sets);const local=localStorageStats();let origin={usage:0,quota:0};try{origin=await navigator.storage?.estimate?.()||origin}catch(_){}const growth=growthStats(sets);const projected=projection(scrimBytes,growth.avg);return{measuredAt:new Date().toISOString(),sets,matches,scrimBytes,local,origin,growth,projected}}
+ function render(data){const body=document.getElementById("storageDiagBody");if(!body)return;const pct=data.origin.quota?data.origin.usage/data.origin.quota*100:0;const targetPct=data.scrimBytes/TARGET_BYTES*100;const recent=data.growth.rows.slice(-10).reverse();body.innerHTML=`
+ <div class="storageDiagNotice">読取専用で計測しました。現在のIndexedDB、localStorage、クラウドデータは変更していません。</div>
+ <div class="storageDiagGrid">
+  <div class="storageDiagMetric"><span>スクリムIndexedDB論理容量</span><b>${fmtBytes(data.scrimBytes)}</b><small>${fmtNum(data.sets.length)}セット / ${fmtNum(data.matches)}試合</small></div>
+  <div class="storageDiagMetric"><span>ブラウザ保存領域 全体</span><b>${fmtBytes(data.origin.usage)}</b><small>割当 ${data.origin.quota?fmtBytes(data.origin.quota):"取得不可"} / 使用率 ${pct.toFixed(3)}%</small></div>
+  <div class="storageDiagMetric"><span>localStorage概算</span><b>${fmtBytes(data.local.bytes)}</b><small>${fmtNum(data.local.keys)}キー。約5MB制限の監視対象</small></div>
+  <div class="storageDiagMetric"><span>直近の平均増加量</span><b>${data.growth.avg?fmtBytes(data.growth.avg)+" / 日":"算出不可"}</b><small>${data.growth.days}登録日分から算出</small></div>
+  <div class="storageDiagMetric"><span>500MBに対する現在量</span><b>${targetPct.toFixed(4)}%</b><small>スクリムJSON本体だけの安全側試算</small></div>
+  <div class="storageDiagMetric"><span>500MB到達予測</span><b>${data.projected.days===null?"算出不可":fmtNum(data.projected.days)+"日後"}</b><small>${data.projected.date?escapeHtml(data.projected.date):"日付データ不足"}</small></div>
+ </div>
+ <div class="storageDiagSection"><h3>直近10登録日の増加量</h3><table class="storageDiagTable"><thead><tr><th>日付</th><th>追加容量</th></tr></thead><tbody>${recent.length?recent.map(([d,b])=>`<tr><td>${escapeHtml(d)}</td><td>${fmtBytes(b)}</td></tr>`).join(""):'<tr><td colspan="2">日付を持つスクリムデータがありません</td></tr>'}</tbody></table></div>
+ <div class="storageDiagMuted">「スクリムIndexedDB論理容量」は保存レコードをJSON化した実データ量です。「ブラウザ保存領域 全体」には画像用IndexedDBやブラウザ内部の管理領域も含まれるため、数値は一致しません。500MB予測は現在のスクリム増加ペースが続く仮定です。</div>
+ <div class="storageDiagActions"><button class="storageDiagExport" type="button" onclick="ApexStorageDiagnostics.exportReport()">診断結果を保存</button><button class="storageDiagRefresh" type="button" onclick="ApexStorageDiagnostics.refresh()">再計測</button></div>`}
+ async function refresh(){const body=document.getElementById("storageDiagBody");if(body)body.innerHTML='<div class="storageDiagNotice">計測中です。データの追加・更新・削除は行いません。</div>';try{const data=await measure();window.__ApexStorageDiagnosticLast=data;render(data);return data}catch(error){console.error("[APEX ORACLE] 保存容量診断失敗",error);if(body)body.innerHTML=`<div class="storageDiagError">計測に失敗しました。<br>${escapeHtml(error?.message||error)}</div>`;return null}}
+ function open(){const layer=document.getElementById("storageDiagLayer");layer?.classList.add("open");layer?.setAttribute("aria-hidden","false");refresh()}
+ function close(){const layer=document.getElementById("storageDiagLayer");layer?.classList.remove("open");layer?.setAttribute("aria-hidden","true")}
+ function exportReport(){const d=window.__ApexStorageDiagnosticLast;if(!d)return;const report={app:"APEX ORACLE",type:"storage-diagnostic-readonly",measuredAt:d.measuredAt,targetBytes:TARGET_BYTES,scrimSets:d.sets.length,scrimMatches:d.matches,scrimLogicalBytes:d.scrimBytes,localStorageBytes:d.local.bytes,localStorageKeys:d.local.keys,originUsageBytes:d.origin.usage,originQuotaBytes:d.origin.quota,averageDailyGrowthBytes:d.growth.avg,projectionDaysTo500MB:d.projected.days,projectionDate:d.projected.date,dailyGrowth:Object.fromEntries(d.growth.rows)};const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`apex-storage-diagnostic-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});document.getElementById("storageDiagLayer")?.addEventListener("click",e=>{if(e.target?.id==="storageDiagLayer")close()});
+ window.ApexStorageDiagnostics={open,close,refresh,measure,exportReport};
 })();
 </script>
 
