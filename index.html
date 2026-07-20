@@ -2019,63 +2019,7 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
  #teamPanel{display:grid;gap:2px}.teamRow{display:grid;grid-template-columns:22px minmax(84px,1.15fr) minmax(55px,.72fr) minmax(55px,.72fr) 24px 24px 24px 24px;gap:3px;min-height:21px;padding:2px 4px;border:1px solid rgba(255,255,255,.065);border-radius:7px;background:rgba(255,255,255,.025);font-size:9.8px;line-height:1.02;align-items:center;text-align:center}
  .teamHead{background:var(--head);color:#bfd0f3;font-size:9.4px;font-weight:900}.teamRow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:18px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;color:var(--muted);font-size:11px;text-align:center}
  </style></head><body><div class="wrap"><div class="sortbar"><div><div class="label">表示</div><div class="context" id="teamContext">登録済みスクリムを選択してください</div></div><label class="label">並び替え<select id="integratedTeamSort"><option value="rankAsc" selected>Place順</option><option value="num">番号順</option><option value="name">チーム名順</option><option value="tpDesc">TP高い順</option><option value="kpDesc">KP高い順</option><option value="ppDesc">PP高い順</option></select></label></div><div id="teamPanel"><div class="empty">登録済みスクリムを選択してください。</div></div></div>
-<script id="cloud-auto-sync-v339">(()=>{"use strict";
-const AUTO_DELAY=5000,RETRY_DELAY=12000;
-let timer=0,pending=new Set(),dirty=false,running=false,lastSyncAt="",installed=false;
-const CLOUD_REASON=/^cloud-|cloud-(?:login|manual)-pull|cloud-pull|cloud-push/i;
-const LOCAL_ONLY=new Set(["apexIntegratedActiveApp","apexIntegratedScrimPage","apexIntegratedTrackerPage","apexActiveBuild","apexLastTeamAnalysisTeamV1"]);
-function role(){try{return String(JSON.parse(localStorage.getItem("apexSecureLoginUserV290")||"null")?.role||"").toLowerCase()}catch(_){return""}}
-function canPush(){return ["admin","管理者"].includes(role())&&navigator.onLine!==false&&!!window.CloudSyncApp}
-function ignoredKey(key){key=String(key||"");return !key||LOCAL_ONLY.has(key)||key.startsWith("apexCloud")||key.startsWith("apexDataSafety::")||/Login|CurrentRole|PermissionRole|IntegrityAudit/i.test(key)}
-function render(){try{window.HeaderCloudPublish?.render?.()}catch(_){}}
-function mark(reason="change",delay=AUTO_DELAY){
- reason=String(reason||"change");
- if(CLOUD_REASON.test(reason))return;
- const cloud=window.CloudSyncApp?.getState?.();
- if(cloud?.busy||cloud?.state==="syncing")return;
- dirty=true;pending.add(reason);clearTimeout(timer);
- timer=setTimeout(run,Math.max(250,delay));render();
-}
-async function run(){
- clearTimeout(timer);timer=0;
- if(running||!dirty)return;
- if(!canPush()){timer=setTimeout(run,RETRY_DELAY);return}
- const cloud=window.CloudSyncApp?.getState?.();
- if(cloud?.busy||cloud?.state==="syncing"){timer=setTimeout(run,RETRY_DELAY);return}
- running=true;const reasons=[...pending];pending.clear();
- try{
-  const ok=await window.CloudSyncApp.push();
-  if(ok){dirty=false;lastSyncAt=new Date().toISOString();window.dispatchEvent(new CustomEvent("apex:auto-cloud-pushed",{detail:{reasons,lastSyncAt}}))}
-  else{dirty=true;reasons.forEach(r=>pending.add(r));timer=setTimeout(run,RETRY_DELAY)}
- }catch(error){console.warn("[APEX ORACLE] 自動クラウド更新失敗",error);dirty=true;reasons.forEach(r=>pending.add(r));timer=setTimeout(run,RETRY_DELAY)}
- finally{running=false;render()}
-}
-function wrapCore(){
- const core=window.ApexDataCore;if(!core||core.__autoSyncWrapped)return;
- for(const name of ["write","transaction"]){const original=core[name];if(typeof original!=="function")continue;core[name]=function(...args){const result=original.apply(this,args);const key=name==="write"?args[0]:"transaction";if(name!=="write"||!ignoredKey(key))mark("core-"+name);return result}}
- core.__autoSyncWrapped=true;
-}
-function wrapLocalStorage(){
- if(Storage.prototype.__apexAutoSyncWrapped)return;
- const set=Storage.prototype.setItem,remove=Storage.prototype.removeItem,clear=Storage.prototype.clear;
- Storage.prototype.setItem=function(key,value){const result=set.call(this,key,value);if(this===localStorage&&!ignoredKey(key))mark("localStorage-set");return result};
- Storage.prototype.removeItem=function(key){const result=remove.call(this,key);if(this===localStorage&&!ignoredKey(key))mark("localStorage-remove");return result};
- Storage.prototype.clear=function(){const result=clear.call(this);if(this===localStorage)mark("localStorage-clear",8000);return result};
- Storage.prototype.__apexAutoSyncWrapped=true;
-}
-function install(){if(installed)return;installed=true;wrapCore();wrapLocalStorage();
- window.addEventListener("apex:indexeddb-scrims-saved",event=>mark("scrim-"+(event.detail?.reason||"saved")));
- window.addEventListener("apex:legend-media-change",event=>{if(window.CloudSyncApp?.getState?.().busy)return;mark("legend-image-change")});
- window.addEventListener("apex:loot-route-change",event=>{if(window.CloudSyncApp?.getState?.().busy)return;mark("loot-image-change")});
- window.addEventListener("apex:local-data-changed",event=>mark(event.detail?.source||event.detail?.reason||"local-data-changed"));
- window.addEventListener("online",()=>{if(dirty)mark("online",500)});
- window.addEventListener("apex:cloud-state",event=>{const st=event.detail||{};if(st.state==="ready"&&!st.busy&&running)lastSyncAt=new Date().toISOString();render()});
- const originalGetState=window.CloudSyncApp?.getState?.bind(window.CloudSyncApp);
- if(originalGetState&&!window.CloudSyncApp.__autoStateWrapped){window.CloudSyncApp.getState=()=>({...originalGetState(),dirty,lastSyncAt:lastSyncAt||window.ApexDataCore?.read?.("apexCloudLastRemoteAt","")||"",autoSync:true,autoPending:[...pending]});window.CloudSyncApp.__autoStateWrapped=true}
- window.ApexCloudAutoSync={schedule:mark,flush:run,getState:()=>({dirty,running,lastSyncAt,pending:[...pending]})};render();
-}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(install,0),{once:true});else setTimeout(install,0);
-})();</script>
+
 </body></html>`;
  if(!teamLoaded||!f.contentDocument?.getElementById("teamPanel")){
   teamLoaded=true;
