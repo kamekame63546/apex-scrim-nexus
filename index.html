@@ -57,7 +57,6 @@
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule,{once:true});else schedule();
 })();
 </script>
-
 <script id="apex-visible-view-refresh-router-v353">
 (()=>{"use strict";
  let timer=0,running=false,pendingReason="";
@@ -89,7 +88,7 @@
 })();
 </script>
 <meta content="indexeddb-cloud-v339-auto-sync" name="apex-build"/>
-<meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"><meta content="0" http-equiv="Expires"/>
+<meta charset="utf-8"/><meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/><meta content="no-cache" http-equiv="Pragma"/><meta content="0" http-equiv="Expires">
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <title>APEX ORACLE</title>
 <style id="appStylesV329">
@@ -4088,31 +4087,6 @@ window.ApexDataFoundationV336=Object.freeze({readMany,update,healthCheck,selfTes
 setTimeout(()=>{const health=healthCheck();CORE()?.audit?.("phase1-health-check",{ok:health.ok,problems:health.results.filter(r=>!r.ok)});selfTest()},0);
 })();
 </script>
-
-<script id="phase2-scrim-poi-ranking-core-v340">(()=>{"use strict";
-const CORE=()=>window.ApexDataCore;
-const norm=v=>String(v??"").normalize("NFKC").trim().toLowerCase().replace(/[‐‑‒–—―−ーｰ]/g,"-").replace(/[’'`´]/g,"").replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");
-const text=v=>String(v??"").trim();
-const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
-const mapName=v=>{const n=norm(v);if(/stormpoint|^sp$/.test(n))return"Storm Point";if(/olympus|^ol$/.test(n))return"Olympus";if(/worldsedge|worldedge|^we$/.test(n))return"World's Edge";if(/edistrict|district|^ed$/.test(n))return"E-District";return text(v)};
-function currentSplit(){return text(window.IntegratedSplit?.current?.()||CORE()?.readJSON?.("apexV62Clean",{},{}).current||"")}
-function registry(split=currentSplit()){const st=CORE()?.readJSON?.("apexV62Clean",{}, {validate:v=>!!v&&typeof v==="object"&&!Array.isArray(v)})||{};return new Map((Array.isArray(st.splitTeams?.[split])?st.splitTeams[split]:[]).map(v=>[norm(v),text(v)]).filter(x=>x[0]))}
-function rowTeam(r){return text(r?.team_name??r?.team??r?.teamName??r?.name)}
-function rowPoi(r){return text(r?.poi??r?.landmark??r?.poi_name??r?.poiName??r?.draft_poi??r?.dropSpot).replace(/^poi[_\s-]*id[:：]?\s*/i,"")}
-function isRegistered(r,split=currentSplit()){const t=rowTeam(r);return !t||registry(split).has(norm(t))}
-function normalizeRow(r,split=currentSplit()){const team=rowTeam(r),poi=rowPoi(r),registered=isRegistered(r,split);return{...r,team_name:team||r?.team_name,poi:poi||r?.poi,landmark:poi||r?.landmark,map:mapName(r?.map),team_registry_status:registered?"registered":"unregistered",unregistered_team:!registered,exclude_from_stats:!registered||r?.exclude_from_stats===true}}
-function normalizeGame(g,split=currentSplit()){const rows=(Array.isArray(g?.rows)?g.rows:[]).map(r=>normalizeRow(r,split));return{...g,map:mapName(g?.map),rows}}
-let cachedSplit="",cachedGames=[],refreshPromise=Promise.resolve([]),refreshToken=0;
-async function refresh({split=currentSplit()}={}){const target=text(split),token=++refreshToken;try{await window.ApexScrimDB?.ready?.();const source=await window.ApexScrimDB?.query?.({split:target});if(token!==refreshToken)return cachedGames.slice();cachedSplit=target;cachedGames=(Array.isArray(source)?source:[]).map(raw=>normalizeGame(raw,target));window.dispatchEvent(new CustomEvent("apex:phase2-scrim-core-ready",{detail:{split:target,games:cachedGames.length}}));return cachedGames.slice()}catch(error){console.error("[APEX ORACLE] Phase2スクリム分析読込失敗",error);if(token===refreshToken){cachedSplit=target;cachedGames=[]}return[]}}
-function ensureFresh(split=currentSplit()){const target=text(split);if(target!==cachedSplit)refreshPromise=refresh({split:target});return refreshPromise}
-function allGames({split=currentSplit(),eligibleOnly=false}={}){const target=text(split);if(target!==cachedSplit)ensureFresh(target);return cachedGames.filter(g=>!target||!text(g.split)||text(g.split)===target).map(g=>{const copy={...g,rows:Array.isArray(g.rows)?g.rows.slice():[]};if(eligibleOnly)copy.rows=copy.rows.filter(r=>!r.exclude_from_stats);return copy})}
-function aggregate(games,{eligibleOnly=true}={}){const teams=new Map();for(const g of games){const once=new Map();for(const r0 of (g.rows||[])){const r=normalizeRow(r0,g.split||currentSplit());if(eligibleOnly&&r.exclude_from_stats)continue;const team=rowTeam(r),k=norm(team);if(!k)continue;let x=once.get(k);if(!x){x={team,pois:new Set(),kp:0,pp:0,tp:0,place:0};once.set(k,x)}const p=rowPoi(r);if(p)x.pois.add(p);x.kp=Math.max(x.kp,num(r.kills??r.kp));x.pp=Math.max(x.pp,num(r.pp));x.tp=Math.max(x.tp,num(r.tp));const place=num(r.placement??r.place);if(place>0)x.place=x.place?Math.min(x.place,place):place}for(const [k,x] of once){let a=teams.get(k);if(!a){a={team:x.team,pois:new Set(),kp:0,pp:0,tp:0,matches:0,placeSum:0,placeCount:0};teams.set(k,a)}x.pois.forEach(p=>a.pois.add(p));a.kp+=x.kp;a.pp+=x.pp;a.tp+=x.tp;a.matches++;if(x.place){a.placeSum+=x.place;a.placeCount++}}}return[...teams.values()].map(x=>({...x,avgKP:x.matches?x.kp/x.matches:0,avgPP:x.matches?x.pp/x.matches:0,avgTP:x.matches?x.tp/x.matches:0,avgPlace:x.placeCount?x.placeSum/x.placeCount:0,poi:[...x.pois]})).sort((a,b)=>b.avgTP-a.avgTP||b.avgPP-a.avgPP||b.avgKP-a.avgKP||a.team.localeCompare(b.team,"ja"))}
-function diagnose(){const split=currentSplit(),games=allGames({split}),reg=registry(split),issues={missingPoi:[],unregistered:[],duplicateMatches:[],invalidScore:[]},ids=new Map();for(const g of games){const gid=[g.date,g.block,g.matchNo,g.map].map(text).join("|");ids.set(gid,(ids.get(gid)||0)+1);for(const r of g.rows||[]){const label=`${g.date||"-"} / ${g.block||"-"} / Match ${g.matchNo||"-"} / ${rowTeam(r)||"名称なし"}`;if(!rowPoi(r))issues.missingPoi.push(label);if(rowTeam(r)&&!reg.has(norm(rowTeam(r))))issues.unregistered.push(rowTeam(r));if([r.kills??r.kp,r.pp,r.tp,r.placement??r.place].some(v=>v!==undefined&&v!==""&&!Number.isFinite(Number(v))))issues.invalidScore.push(label)}}for(const [id,n] of ids)if(n>1)issues.duplicateMatches.push(`${id} ×${n}`);issues.unregistered=[...new Set(issues.unregistered)].sort((a,b)=>a.localeCompare(b,"ja"));const report={at:new Date().toISOString(),split,games:games.length,eligibleTeams:aggregate(games).length,issues,ok:Object.values(issues).every(a=>a.length===0)};CORE()?.audit?.("phase2-diagnostic",{split,ok:report.ok,counts:Object.fromEntries(Object.entries(issues).map(([k,v])=>[k,v.length]))});return report}
-let timer=0;function scheduleRender(){clearTimeout(timer);timer=setTimeout(async()=>{await refresh({split:currentSplit()});for(const [o,m] of [["HomeApp","render"],["ScrimSavedList","render"],["MasterDataListV231","run"]])try{window[o]?.[m]?.()}catch(e){console.warn("phase2 render",o,m,e)}},80)}
-window.addEventListener("apex:indexeddb-scrims-saved",scheduleRender);document.addEventListener("change",event=>{if(event.target?.id==="globalSplitSelect")scheduleRender()},true);
-window.ScrimDataV340={allGames,refresh,ready:()=>refreshPromise,normalizeGame,normalizeRow,aggregate,diagnose,isRegistered,rowPoi,rowTeam,currentSplit};
-refreshPromise=refresh({split:currentSplit()}).then(()=>{const r=diagnose();if(!r.ok)console.warn("Phase2 data diagnostic",r);return cachedGames.slice()});
-})();</script>
 <script id="phase2-ranking-team-bridge-v341">(()=>{"use strict";
 const text=v=>String(v??"").trim();
 const currentSplit=()=>text(window.IntegratedSplit?.current?.()||document.getElementById("globalSplitSelect")?.value||"");
@@ -4179,17 +4153,8 @@ window.addEventListener("apex:scrims-direct-ready",()=>schedule(true,30));
 window.Phase2RankingTeamBridgeV341={scan:()=>schedule(true,0),refresh,applyToFrame,getState:()=>({split:lastSplit,count:lastCount,loading:!!loading})};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{bind();schedule(true,80)},{once:true});else{bind();schedule(true,80)}
 })();</script>
-<script id="phase2-data-core-correction-v341">(()=>{"use strict";
-const API=()=>window.ScrimDataV340,CORE=()=>window.ApexDataCore;
-const text=v=>String(v??"").trim(),norm=v=>text(v).normalize("NFKC").toLowerCase().replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜'’`´-]+/g,"");
-function matchIdentity(m,index){return text(m?.id||m?.match_id||m?.setId)+"|"+text(m?.date)+"|"+text(m?.block)+"|"+text(m?.matchNo??m?.match)+"|"+text(m?.map)+"|"+index}
-function collectMatches({split=API()?.currentSplit?.()||"",eligibleOnly=false}={}){const api=window.ScrimAnalysisV342;if(api?.collect)return api.collect({split,eligibleOnly});return[]}
-function aggregateMatches(games,{eligibleOnly=true}={}){const teams=new Map();for(const g of games||[]){const perTeam=new Map();for(const r0 of g.rows||[]){const r=API()?.normalizeRow?.(r0,g.split||API()?.currentSplit?.())||r0;if(eligibleOnly&&r.exclude_from_stats)continue;const team=text(r.team_name??r.team),key=norm(team);if(!key)continue;let x=perTeam.get(key);if(!x){x={team,kp:0,placement:Infinity,pois:new Set()};perTeam.set(key,x)}x.kp+=Number(r.kills??r.kp)||0;const place=Number(r.placement??r.place);if(Number.isFinite(place)&&place>0)x.placement=Math.min(x.placement,place);const poi=API()?.rowPoi?.(r)||text(r.poi??r.landmark);if(poi)x.pois.add(poi)}for(const [key,x] of perTeam){let a=teams.get(key);if(!a){a={team:x.team,kp:0,pp:0,tp:0,matches:0,placeSum:0,placeCount:0,pois:new Set()};teams.set(key,a)}const pp=x.placement===1?12:x.placement===2?9:x.placement===3?7:x.placement===4?5:x.placement===5?4:x.placement>=6&&x.placement<=7?3:x.placement>=8&&x.placement<=10?2:x.placement>=11&&x.placement<=15?1:0;a.kp+=x.kp;a.pp+=pp;a.tp+=x.kp+pp;a.matches++;if(Number.isFinite(x.placement)){a.placeSum+=x.placement;a.placeCount++}x.pois.forEach(p=>a.pois.add(p))}}return[...teams.values()].map(a=>({...a,poi:[...a.pois],avgKP:a.matches?a.kp/a.matches:0,avgPP:a.matches?a.pp/a.matches:0,avgTP:a.matches?a.tp/a.matches:0,avgPlace:a.placeCount?a.placeSum/a.placeCount:0})).sort((a,b)=>b.avgTP-a.avgTP||b.avgPP-a.avgPP||b.avgKP-a.avgKP||a.team.localeCompare(b.team,"ja"))}
-function apply(){const api=API();if(!api)return false;api.allGames=collectMatches;api.aggregate=aggregateMatches;api.version="phase2-core-v341";CORE()?.audit?.("phase2-data-core-corrected",{matches:collectMatches().length});return true}
-setTimeout(apply,250);window.Phase2DataCoreCorrectionV341={apply,collectMatches,aggregateMatches};
-})();</script>
 <script id="phase2-unified-analysis-v342">(()=>{"use strict";
-const CORE=()=>window.ApexDataCore,BASE=()=>window.ScrimDataV340;
+const CORE=()=>window.ApexDataCore;
 
 let indexedScrimRows=[];
 let indexedScrimSplit="";
@@ -4229,8 +4194,32 @@ function aggregate(games=collect({eligibleOnly:true})){const teams=new Map();for
 function poiRanking(map=""){const games=collect({eligibleOnly:true}),stats=new Map();for(const g of games){if(map&&canonicalMap(g.map)!==canonicalMap(map))continue;for(const r of g.rows||[]){const poi=poiName(r),team=teamName(r);if(!poi||!team)continue;const key=canonicalMap(g.map)+"|"+norm(poi);let x=stats.get(key);if(!x){x={map:canonicalMap(g.map),poi,teams:new Map(),tp:0,matches:0};stats.set(key,x)}const tk=norm(team),t=x.teams.get(tk)||{team,tp:0,matches:0};t.tp+=n(r.tp);t.matches++;x.teams.set(tk,t);x.tp+=n(r.tp);x.matches++}}return[...stats.values()].map(x=>({...x,avgTP:x.matches?x.tp/x.matches:0,teams:[...x.teams.values()].map(t=>({...t,avgTP:t.matches?t.tp/t.matches:0})).sort((a,b)=>b.matches-a.matches||b.avgTP-a.avgTP)})).sort((a,b)=>b.avgTP-a.avgTP||a.poi.localeCompare(b.poi,"ja"))}
 function teamDetail(team){const key=norm(team),games=collect({eligibleOnly:true}),rows=[];for(const g of games)for(const r of g.rows||[])if(norm(teamName(r))===key)rows.push({...r,date:g.date,block:g.block,matchNo:g.matchNo,map:canonicalMap(g.map),rule:g.rule||"normal"});return{team:text(team),rows,summary:aggregate(games).find(x=>norm(x.team)===key)||null}}
 function diagnose(){const games=collect(),issues={missingPoi:[],unregistered:[],duplicates:[],invalidScore:[],emptyMatches:[]},ids=new Map();for(const g of games){const id=[g.date,g.block,g.matchNo,g.map,g.rule||"normal"].map(text).join("|");ids.set(id,(ids.get(id)||0)+1);if(!(g.rows||[]).length)issues.emptyMatches.push(id);for(const r of g.rows||[]){const label=`${g.date||"-"} / ${g.block||"-"} / Match ${g.matchNo||"-"} / ${teamName(r)||"名称なし"}`;if(!poiName(r))issues.missingPoi.push(label);if(r.unregistered_team)issues.unregistered.push(teamName(r));if([r.kills,r.pp,r.tp,r.placement].some(v=>v!==undefined&&v!==""&&!Number.isFinite(Number(v))))issues.invalidScore.push(label)}}for(const [id,c] of ids)if(c>1)issues.duplicates.push(`${id} ×${c}`);issues.unregistered=[...new Set(issues.unregistered.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));const report={at:new Date().toISOString(),split:currentSplit(),games:games.length,normal:games.filter(g=>(g.rule||"normal")!=="poland").length,poland:games.filter(g=>g.rule==="poland").length,teams:aggregate(games.filter(g=>true)).length,issues,ok:Object.values(issues).every(x=>x.length===0)};CORE()?.audit?.("phase2-v342-diagnostic",{ok:report.ok,games:report.games,normal:report.normal,poland:report.poland,counts:Object.fromEntries(Object.entries(issues).map(([k,v])=>[k,v.length]))});return report}
-function apply(){const api=BASE();if(api){api.allGames=collect;api.aggregate=aggregate;api.normalizeRow=(r,split)=>normalizeRow(r,{},registered(split));api.normalizeGame=(g,split)=>({...g,map:canonicalMap(g.map),rows:rawRows(g).map(r=>normalizeRow(r,g,registered(split)))});api.diagnose=diagnose;api.poiRanking=poiRanking;api.teamDetail=teamDetail;api.version="phase2-core-v342-idb-ranking"}window.ScrimAnalysisV342={collect,aggregate,poiRanking,teamDetail,diagnose,canonicalMap,teamName,poiName,currentSplit,reload:reloadRankingData,version:"phase2-core-v342-idb-ranking"};CORE()?.audit?.("phase2-v342-applied",{games:collect().length,source:"indexeddb",split:indexedScrimSplit})}
-async function reloadRankingData(){await loadIndexedScrims(currentSplit());apply();try{window.Phase2RankingTeamBridgeV341?.scan?.()}catch(_){}try{window.HomeApp?.render?.()}catch(_){}return indexedScrimRows.length}
+function isRegistered(row,split=currentSplit()){const team=teamName(row);return !team||registered(split).has(norm(team))}
+function normalizeGame(game,split=currentSplit()){const reg=registered(split);return{...game,map:canonicalMap(game?.map),matchNo:game?.matchNo??game?.match,rows:rawRows(game).map(row=>normalizeRow(row,game,reg))}}
+function allGames(options={}){return collect(options)}
+function apply(){
+ const version="phase2-core-v343-unified-idb-analysis";
+ const compatibility={
+  allGames,
+  refresh:reloadRankingData,
+  ready:()=>indexedScrimLoading||Promise.resolve(indexedScrimRows.slice()),
+  normalizeGame,
+  normalizeRow:(row,split)=>normalizeRow(row,{},registered(split||currentSplit())),
+  aggregate,
+  diagnose,
+  isRegistered,
+  rowPoi:poiName,
+  rowTeam:teamName,
+  currentSplit,
+  poiRanking,
+  teamDetail,
+  version
+ };
+ window.ScrimDataV340=compatibility;
+ window.ScrimAnalysisV342={collect,allGames,aggregate,poiRanking,teamDetail,diagnose,canonicalMap,teamName,poiName,currentSplit,isRegistered,normalizeGame,reload:reloadRankingData,version};
+ CORE()?.audit?.("phase2-v343-unified-applied",{games:collect().length,source:"indexeddb",split:indexedScrimSplit});
+}
+async function reloadRankingData(){await loadIndexedScrims(currentSplit());apply();try{window.Phase2RankingTeamBridgeV341?.scan?.()}catch(_){}return indexedScrimRows.length}
 let timer=0;function refresh(){clearTimeout(timer);timer=setTimeout(()=>{reloadRankingData().catch(error=>console.error("[APEX ORACLE] ランキング再読込失敗",error))},60)}
 reloadRankingData();window.addEventListener("apex:indexeddb-scrims-saved",refresh);window.addEventListener("apex:storage-ready",refresh);window.addEventListener("storage",e=>{if(!e?.key||e.key==="apexV62Clean")refresh()});setTimeout(()=>{const r=diagnose();if(!r.ok)console.warn("Phase2 v342 diagnostic",r)},900);
 })();</script>
@@ -4242,30 +4231,24 @@ reloadRankingData();window.addEventListener("apex:indexeddb-scrims-saved",refres
 .zoneOverviewPin,.zoneOverviewPin:hover,.zoneOverviewPin:focus,.zoneOverviewPin:active{transition:none!important;animation:none!important;transform:translate(-50%,-50%)!important;}
 </style>
 <script id="phase3-core-v343">(()=>{"use strict";
-const CORE=()=>window.ApexDataCore;
-const state={timer:0,lastReason:"",running:false};
-function safeCall(obj,methods){for(const m of methods){try{const fn=window[obj]?.[m];if(typeof fn==="function"){fn.call(window[obj]);return true}}catch(e){console.warn("phase3 render failed",obj,m,e)}}return false}
-function refresh(reason="manual"){state.lastReason=reason;clearTimeout(state.timer);state.timer=setTimeout(()=>{if(state.running)return;state.running=true;try{
- safeCall("HomeApp",["render","refresh"]);
- safeCall("ZoneOverviewApp",["render","refresh"]);
- safeCall("RingConsoleApp",["render","refresh"]);
- safeCall("RingConsoleCleanV164",["renderApp","render"]);
- safeCall("MetaAnalysisApp",["render","refresh"]);
- const tracker=document.getElementById("frameTracker");try{tracker?.contentWindow?.dispatchEvent(new CustomEvent("apex:render-request",{detail:{source:"phase3",reason}}))}catch(_){}
- const scrim=document.getElementById("frameScrim");try{scrim?.contentWindow?.dispatchEvent(new CustomEvent("apex:render-request",{detail:{source:"phase3",reason}}))}catch(_){}
- }finally{state.running=false}},70)}
-function disableRingViewerDrag(){const panel=document.getElementById("ringConsolePanel");if(!panel)return;if(!panel.dataset.phase3DragGuard){panel.dataset.phase3DragGuard="1";const stop=e=>{if(e.target.closest?.(".ringMapLabel")){e.preventDefault();e.stopImmediatePropagation()}};["pointerdown","mousedown","touchstart","dragstart"].forEach(t=>panel.addEventListener(t,stop,true))}panel.querySelectorAll(".ringMapLabel").forEach(el=>{el.draggable=false;el.removeAttribute("tabindex")})}
-function diagnose(){const read=(k,f)=>CORE()?.readJSON?.(k,f)??f;const report={at:new Date().toISOString(),ok:true,checks:[]};const checks=[
- ["home-scrims",()=>Array.isArray(read("apexScrimsV1",[]))],
- ["final-zones",()=>Array.isArray(read("apexFinalZonesV1",[]))],
- ["ring-console",()=>{const v=read("apexRingConsoleV1",{});return v&&typeof v==="object"}],
- ["phase2-core",()=>!!window.ApexPhase2Core],
- ["home-panel",()=>!!document.getElementById("homePanel")],
- ["zone-panel",()=>!!document.getElementById("zoneOverviewPanel")],
- ["ring-panel",()=>!!document.getElementById("ringConsolePanel")]
- ];for(const [name,fn] of checks){let ok=false,error="";try{ok=!!fn()}catch(e){error=e.message}report.checks.push({name,ok,error});if(!ok)report.ok=false}try{CORE()?.audit?.("phase3-diagnostic",{ok:report.ok,failed:report.checks.filter(x=>!x.ok).map(x=>x.name)})}catch(_){}return report}
-function init(){disableRingViewerDrag();refresh("init");const ring=document.getElementById("ringConsolePanel");if(ring){let frame=0;new MutationObserver(()=>{frame||(frame=requestAnimationFrame(()=>{frame=0;disableRingViewerDrag()}))}).observe(ring,{childList:true,subtree:true})}window.addEventListener("storage",e=>{if(e.key?.startsWith("apex"))refresh("storage")});setTimeout(()=>{const r=diagnose();if(!r.ok)console.warn("Phase3 diagnostic failed",r)},1200)}
-window.Phase3CoreV343={refresh,diagnose,disableRingViewerDrag,state};
+function disableRingViewerDrag(){
+ const panel=document.getElementById("ringConsolePanel");
+ if(!panel)return;
+ if(!panel.dataset.phase3DragGuard){
+  panel.dataset.phase3DragGuard="1";
+  const stop=event=>{if(event.target.closest?.(".ringMapLabel")){event.preventDefault();event.stopImmediatePropagation()}};
+  ["pointerdown","mousedown","touchstart","dragstart"].forEach(type=>panel.addEventListener(type,stop,true));
+ }
+ panel.querySelectorAll(".ringMapLabel").forEach(el=>{el.draggable=false;el.removeAttribute("tabindex")});
+}
+function init(){
+ disableRingViewerDrag();
+ const ring=document.getElementById("ringConsolePanel");
+ if(!ring)return;
+ let frame=0;
+ new MutationObserver(()=>{if(frame)return;frame=requestAnimationFrame(()=>{frame=0;disableRingViewerDrag()})}).observe(ring,{childList:true,subtree:true});
+}
+window.Phase3CoreV343={disableRingViewerDrag};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
 <script id="team-auto-replace-v1">
@@ -4423,57 +4406,14 @@ const startedAt=performance.now();
 const stats={storageReads:0,storageWrites:0,renders:0,events:0,lastError:"なし",lastErrorAt:"",lastAction:"起動"};
 window.addEventListener("apex:indexeddb-scrims-saved",()=>{stats.storageWrites++;stats.lastAction="IndexedDB保存"});
 window.addEventListener("apex:indexeddb-current-split-ready",()=>{stats.storageReads++;stats.lastAction="IndexedDB読込"});
-window.addEventListener("error",e=>{
-  stats.lastError=e?.message||"不明なエラー";
-  stats.lastErrorAt=new Date().toLocaleString("ja-JP");
-},{capture:true});
-window.addEventListener("unhandledrejection",e=>{
-  stats.lastError=String(e?.reason?.message||e?.reason||"Promiseエラー");
-  stats.lastErrorAt=new Date().toLocaleString("ja-JP");
-},{capture:true});
-
-function markRender(name="render"){stats.renders++;stats.lastAction=name}
-function markEvent(name="event"){stats.events++;stats.lastAction=name}
-
-function hookObject(obj,names,prefix){
-  if(!obj)return;
-  for(const name of names){
-    const fn=obj[name];
-    if(typeof fn!=="function"||fn.__v346Wrapped)continue;
-    const wrapped=function(){markRender(`${prefix}.${name}`);return fn.apply(this,arguments)};
-    wrapped.__v346Wrapped=true;
-    obj[name]=wrapped;
-  }
-}
-function installHooks(){
-  hookObject(window.HomeApp,["render"],"HomeApp");
-  hookObject(window.MasterDataListV231,["render","enhance","run"],"MasterDataList");
-  hookObject(window.SystemDiagnosticsV339,["render","open"],"Diagnostics");
-  hookObject(window.ScrimAnalysisV342,["aggregate","poiRanking","teamDetail"],"Analysis");
-}
-setTimeout(installHooks,500);
-setTimeout(installHooks,1500);
-
-document.addEventListener("click",()=>markEvent("click"),true);
-document.addEventListener("change",()=>markEvent("change"),true);
-
-function snapshot(){
-  return {
-    storageReads:stats.storageReads,
-    storageWrites:stats.storageWrites,
-    renders:stats.renders,
-    events:stats.events,
-    lastError:stats.lastError,
-    lastErrorAt:stats.lastErrorAt,
-    lastAction:stats.lastAction,
-    uptimeSeconds:Math.floor((performance.now()-startedAt)/1000)
-  };
-}
-function reset(){
-  stats.storageReads=0;stats.storageWrites=0;stats.renders=0;stats.events=0;
-  stats.lastError="なし";stats.lastErrorAt="";stats.lastAction="リセット";
-}
-window.DebugMonitorV346={snapshot,reset,markRender,markEvent,installHooks};
+window.addEventListener("apex:render-complete",event=>{stats.renders++;stats.lastAction=String(event.detail?.reason||event.detail?.source||"画面更新")});
+window.addEventListener("error",event=>{stats.lastError=event?.message||"不明なエラー";stats.lastErrorAt=new Date().toLocaleString("ja-JP")},{capture:true});
+window.addEventListener("unhandledrejection",event=>{stats.lastError=String(event?.reason?.message||event?.reason||"Promiseエラー");stats.lastErrorAt=new Date().toLocaleString("ja-JP")},{capture:true});
+document.addEventListener("click",()=>{stats.events++;stats.lastAction="click"},true);
+document.addEventListener("change",()=>{stats.events++;stats.lastAction="change"},true);
+function snapshot(){return{...stats,uptimeSeconds:Math.floor((performance.now()-startedAt)/1000)}}
+function reset(){stats.storageReads=0;stats.storageWrites=0;stats.renders=0;stats.events=0;stats.lastError="なし";stats.lastErrorAt="";stats.lastAction="リセット"}
+window.DebugMonitorV346={snapshot,reset,markRender:name=>{stats.renders++;stats.lastAction=name||"render"},markEvent:name=>{stats.events++;stats.lastAction=name||"event"},installHooks:()=>false};
 })();</script>
 <script id="v339-system-diagnostics">(()=>{"use strict";
 const STATE_KEY="apexV62Clean",ERROR_KEY="apexRuntimeErrorsV285",IMAGE_DB="apexLootRouteImagesV1";
@@ -5051,7 +4991,7 @@ window.SystemDiagnosticsV339={open,render,teamIssues,dataCounts,lootCoverage,loo
 })();</script>
 <script id="v293-system-management-script">(()=>{"use strict";function isAdmin(){try{if(window.AppRolesV196?.isAdmin)return!!window.AppRolesV196.isAdmin()}catch(_){}return"admin"===(localStorage.getItem("apexCurrentRoleV174")||localStorage.getItem("apexCurrentRoleV171")||localStorage.getItem("apexPermissionRole")||"")}function syncAdminClass(){document.body.classList.toggle("v293-admin-role",isAdmin())}function boot(){syncAdminClass();const previousApply=window.AppRolesV196?.applyPermissions;if(window.AppRolesV196&&"function"==typeof previousApply&&!previousApply.__v293Wrapped){const wrapped=function(...args){const result=previousApply.apply(this,args);return syncAdminClass(),result};wrapped.__v293Wrapped=!0,window.AppRolesV196.applyPermissions=wrapped}}window.SystemManagementV293={open:function(){syncAdminClass(),isAdmin()&&(document.querySelectorAll(".appFrame,.adminPanel,.homePanel,.lootRoutePanel").forEach(el=>el.classList.remove("active")),document.querySelector(".stage")?.classList.add("admin-mode"),document.getElementById("adminSystemManagement")?.classList.add("active"),document.querySelectorAll(".pageTab").forEach(btn=>{btn.classList.toggle("active","systemManagement"===btn.dataset.page)}))},syncAdminClass:syncAdminClass},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",boot,{once:!0}):boot(),setTimeout(syncAdminClass,300)})();</script>
 <script id="indexeddb-direct-read-v3">(()=>{"use strict";window.ApexScrimReadV3={all:()=>window.ApexScrimDB?.getAll?.()||Promise.resolve([]),bySplit:split=>window.ApexScrimDB?.getBySplitAsync?.(split)||Promise.resolve([]),query:options=>window.ApexScrimDB?.query?.(options)||Promise.resolve([]),ready:()=>window.ApexScrimDB?.ready?.()||Promise.resolve()};window.ApexScrimReadV2=window.ApexScrimReadV3;window.addEventListener("apex:storage-ready",()=>window.dispatchEvent(new CustomEvent("apex:scrims-direct-ready")),{once:true});})();</script>
-<script id="final-build-marker-v356">window.ApexFinalBuild={version:"v356",date:"2026-07-15",source:"index (10).html",teamSwapStores:["apexScrimsV1","apexPolandScrimsV1"]};</script>
+<script id="final-build-marker-v356">window.ApexFinalBuild={version:"v356-cleanup2",date:"2026-07-21",source:"index.html",teamSwapStores:["ApexOracleDB/scrims"]};</script>
 <script id="lootRouteAppV365">(()=>{"use strict";
 const DATA_KEY="apexLootRoutesV1",POS_KEY="apexLootRoutePositionsV1",ORDER_KEY="apexLootRouteMapOrderV1",TRACKER_KEY="apexV62Clean",MAP_KEY="apexMapChoicesV1",LANDMARK_KEY="apexLandmarksV6";
 const IMAGE_DB="apexLootRouteImagesV1",IMAGE_STORE="images";
@@ -5721,7 +5661,6 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>schedule(isTargetPage()),{once:true});else schedule(isTargetPage());
 })();
 </script>
-
 <script id="team-registration-persistence-fix-v354">
 (()=>{"use strict";
  const KEY="apexV62Clean";
@@ -5784,7 +5723,6 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  window.TeamRegistrationPersistenceV354={add:addTeam,read,refresh,install};
 })();
 </script>
-
 <style id="apex-storage-diagnostics-style-v1">
 #headerStorageDiagBtn{height:34px;padding:0 12px;border:1px solid rgba(34,197,94,.48);border-radius:9px;background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;font-size:11px;font-weight:950;letter-spacing:.03em;cursor:pointer;white-space:nowrap}
 #headerStorageDiagBtn:hover{filter:brightness(1.08)}
@@ -5798,11 +5736,11 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
 .storageDiagError{padding:16px;color:#fecaca;font-weight:850;line-height:1.7}.storageDiagMuted{color:#94a5c4;font-size:11px;line-height:1.6;margin-top:10px}
 @media(max-width:760px){.storageDiagGrid{grid-template-columns:1fr}.storageDiagTable{font-size:11px}}
 </style>
-<div class="storageDiagLayer" id="storageDiagLayer" aria-hidden="true">
- <div class="storageDiagBox" role="dialog" aria-modal="true" aria-labelledby="storageDiagTitle">
-  <div class="storageDiagHead"><h2 id="storageDiagTitle">保存容量診断</h2><button class="storageDiagClose" type="button" onclick="ApexStorageDiagnostics.close()">閉じる</button></div>
-  <div class="storageDiagBody" id="storageDiagBody"><div class="storageDiagNotice">計測中です。データの追加・更新・削除は行いません。</div></div>
- </div>
+<div aria-hidden="true" class="storageDiagLayer" id="storageDiagLayer">
+<div aria-labelledby="storageDiagTitle" aria-modal="true" class="storageDiagBox" role="dialog">
+<div class="storageDiagHead"><h2 id="storageDiagTitle">保存容量診断</h2><button class="storageDiagClose" onclick="ApexStorageDiagnostics.close()" type="button">閉じる</button></div>
+<div class="storageDiagBody" id="storageDiagBody"><div class="storageDiagNotice">計測中です。データの追加・更新・削除は行いません。</div></div>
+</div>
 </div>
 <script id="apex-storage-diagnostics-v2">
 (()=>{"use strict";
@@ -5852,9 +5790,6 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
  document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});document.getElementById("storageDiagLayer")?.addEventListener("click",e=>{if(e.target?.id==="storageDiagLayer")close()});window.ApexStorageDiagnostics={open,close,refresh,measure,exportReport};
 })();
 </script>
-
-
-
 <style id="cloud-sync-result-toast-style">
 #cloudSyncResultToast{position:fixed;top:18px;right:18px;z-index:2147483000;width:min(390px,calc(100vw - 36px));padding:15px 16px;border:1px solid #2f4569;border-radius:14px;background:linear-gradient(180deg,rgba(14,25,48,.98),rgba(8,16,33,.98));box-shadow:0 16px 45px rgba(0,0,0,.42);color:#eaf2ff;font-family:inherit;opacity:0;transform:translateY(-12px);pointer-events:none;transition:opacity .22s ease,transform .22s ease}
 #cloudSyncResultToast.show{opacity:1;transform:translateY(0);pointer-events:auto}
