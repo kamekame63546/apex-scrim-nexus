@@ -1476,56 +1476,44 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 </div>
 </header>
 <aside aria-label="アプリ・ページ切替メニュー" class="sideMenu">
-<div class="menuBlock homeMenuBlock">
+<div class="menuBlock homeMenuBlock" data-sidebar-group="home">
 <div class="pageTabs" id="tabsHome">
 <button class="pageTab active" data-app="home" data-page="home" onclick="window.LootRouteApp?.leave?.();HomeApp.show()">ホーム</button>
 </div>
 </div>
-<div class="menuBlock">
-<span class="menuLabel">スクリムデータ</span>
-<div class="pageTabs" id="tabsScrim">
+<div class="menuBlock" data-sidebar-group="analysis">
+<span class="menuLabel"><span class="menuLabelIcon">▥</span>分析</span>
+<div class="pageTabs" id="tabsAnalysis">
+<button class="pageTab" data-app="scrim" data-page="dashboardPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','dashboardPage')">ランキング</button>
 <button class="pageTab" data-app="scrim" data-page="analysisPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','analysisPage')">メタ分析</button>
 <button class="pageTab" data-app="scrim" data-page="teamDetailPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','teamDetailPage')">チーム分析</button>
-<button class="pageTab" data-app="scrim" data-page="dashboardPage" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('scrim','dashboardPage')">ランキング</button>
-</div>
-</div>
-<div class="menuBlock">
-<span class="menuLabel">ファイトデータ</span>
-<div class="pageTabs" id="tabsTracker">
 <button class="pageTab" data-app="tracker" data-page="analysis" onclick="window.LootRouteApp?.leave?.();IntegratedApp.go('tracker','analysis')">ファイト分析</button>
 </div>
 </div>
-<div class="menuBlock">
-<span class="menuLabel">安置</span>
-<div class="pageTabs" id="tabsZone">
-<button class="pageTab" data-app="zone" data-page="overview" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.show()">最終安置一覧</button>
-</div>
-</div>
-<div class="menuBlock">
-<span class="menuLabel">リングコンソール</span>
-<div class="pageTabs" id="tabsRingConsole">
-<button class="pageTab" data-app="ringConsole" data-page="overview" onclick="window.LootRouteApp?.leave?.();RingConsoleApp.show()">確率</button>
-</div>
-</div>
-<div class="menuBlock">
-<span class="menuLabel">漁りルート</span>
-<div class="pageTabs" id="tabsLootRoute">
+<div class="menuBlock" data-sidebar-group="strategy">
+<span class="menuLabel"><span class="menuLabelIcon">◎</span>戦略</span>
+<div class="pageTabs" id="tabsStrategy">
+<button class="pageTab" data-app="zone" data-page="overview" onclick="window.LootRouteApp?.leave?.();ZoneOverviewApp.show()">最終安置</button>
+<button class="pageTab" data-app="ringConsole" data-page="overview" onclick="window.LootRouteApp?.leave?.();RingConsoleApp.show()">リングコンソール</button>
 <button class="pageTab" data-app="lootRoute" data-page="viewer" onclick="LootRouteApp.show()">漁りルート</button>
 </div>
 </div>
-<div class="menuBlock" id="adminMenuBlock">
-<span class="menuLabel">登録</span>
+<div class="menuBlock" id="adminMenuBlock" data-sidebar-group="registration">
+<span class="menuLabel"><span class="menuLabelIcon">＋</span>登録</span>
 <div class="pageTabs" id="tabsAdmin">
-<button class="pageTab" data-app="admin" data-page="registration" onclick="window.LootRouteApp?.leave?.();IntegratedApp.registration()">データ登録</button>
-<button class="pageTab" data-app="admin" data-page="lootRouteAdmin" onclick="LootRouteApp.showAdmin()">漁りルート登録</button>
-<button class="pageTab" data-app="admin" data-page="fightRecord" onclick="window.LootRouteApp?.leave?.();FightRecordAdmin.show()">ファイト登録</button>
+<span class="sidebarSubLabel">試合</span>
 <button class="pageTab" data-app="admin" data-page="scrimRegister" id="openScrimRegisterBtn" type="button">スクリム登録</button>
+<button class="pageTab" data-app="admin" data-page="fightRecord" onclick="window.LootRouteApp?.leave?.();FightRecordAdmin.show()">ファイト登録</button>
+<span class="sidebarSubLabel">戦略</span>
 <button class="pageTab" data-app="admin" data-page="zoneRegister" onclick="window.LootRouteApp?.leave?.();ManualZoneAdmin.show()">最終安置登録</button>
 <button class="pageTab" data-app="admin" data-page="ringConsoleAdmin" onclick="window.LootRouteApp?.leave?.();RingConsoleCleanV164.showAdmin()">リングコンソール登録</button>
+<button class="pageTab" data-app="admin" data-page="lootRouteAdmin" onclick="LootRouteApp.showAdmin()">漁りルート登録</button>
+<span class="sidebarSubLabel">マスター</span>
+<button class="pageTab" data-app="admin" data-page="registration" onclick="window.LootRouteApp?.leave?.();IntegratedApp.registration()">データ登録</button>
 </div>
 </div>
-<div class="menuBlock adminOnlyBlock" id="ownerMenuBlock">
-<span class="menuLabel">管理者</span>
+<div class="menuBlock adminOnlyBlock" id="ownerMenuBlock" data-sidebar-group="management">
+<span class="menuLabel"><span class="menuLabelIcon">⚙</span>管理</span>
 <div class="pageTabs" id="tabsOwner">
 <button class="pageTab" data-app="admin" data-page="userRoleAdmin" onclick="window.LootRouteApp?.leave?.();PermissionRoleV174.openRoleAdmin()">権限管理</button>
 <button class="pageTab" data-app="admin" data-page="systemManagement" onclick="window.LootRouteApp?.leave?.();SystemManagementV293.open()">システム管理</button>
@@ -5547,7 +5535,7 @@ function optimizeLegendImage(dataUrl){return new Promise((resolve,reject)=>{cons
 async function uploadImage(encoded,file){if(!file)return;if(!file.type.startsWith("image/"))return alert("画像ファイルを選択してください。");if(file.size>15*1024*1024)return alert("画像は15MB以下を選択してください。");const name=decodeURIComponent(encoded),reader=new FileReader();reader.onload=async()=>{let previous=null,key="";try{await legendAssetsReady;const list=profiles(),p=list.find(x=>x.name===name);if(!p)throw new Error("legend not found");key=p.imageKey||legendImageKey(name);const blob=await optimizeLegendImage(String(reader.result));if(navigator.storage?.estimate){const estimate=await navigator.storage.estimate();console.info("Legend image storage estimate",{usage:estimate.usage,quota:estimate.quota,nextBlobBytes:blob.size})}previous=await LegendImageAssets.getRecord(key);await LegendImageAssets.put(key,blob);try{p.hasImage=true;p.imageKey=key;saveProfiles(list)}catch(error){if(previous?.blob)await LegendImageAssets.put(key,previous.blob);else await LegendImageAssets.remove(key);throw error}await LegendImageAssets.ensureUrl(key);renderImageAdmin();renderPickers();query()}catch(error){console.error("Legend image upload failed",name,error);alert("画像を保存できませんでした。\nブラウザの保存容量を確認してください。") }finally{pendingImageLegend=""}};reader.onerror=()=>{pendingImageLegend="";alert("画像の読み込みに失敗しました。");};reader.readAsDataURL(file)}
 async function deleteImage(encoded){const name=decodeURIComponent(encoded);try{await legendAssetsReady;const list=profiles(),p=list.find(x=>x.name===name);if(!p)return;const key=p.imageKey||legendImageKey(name),previous=await LegendImageAssets.getRecord(key);await LegendImageAssets.remove(key);try{p.hasImage=false;delete p.imageKey;p.image="";saveProfiles(list)}catch(error){if(previous?.blob)await LegendImageAssets.put(key,previous.blob);throw error}renderImageAdmin();renderPickers();query()}catch(error){console.error("Legend image delete failed",name,error);alert("画像を削除できませんでした。\nブラウザの保存容量を確認してください。")}}function changeRole(encoded,role){const list=profiles(),p=list.find(x=>x.name===decodeURIComponent(encoded));if(p&&ROLES.includes(role)){p.role=role;saveProfiles(list);renderImageAdmin();renderPickers()}}function moveLegend(encoded,dir){const name=decodeURIComponent(encoded),list=profiles(),idx=list.findIndex(x=>x.name===name);if(idx<0)return;const same=list.map((x,i)=>({x,i})).filter(o=>o.x.role===list[idx].role),at=same.findIndex(o=>o.i===idx),target=same[at+dir];if(!target)return;[list[idx],list[target.i]]=[list[target.i],list[idx]];saveProfiles(list);renderImageAdmin();renderPickers()}
 function num(id){return Number(document.getElementById(id)?.value)||0}function saveSettings(){const weights={performance:num("cs2WPerformance"),pick:num("cs2WPick"),meta:num("cs2WMeta"),map:num("cs2WMap")};if(Object.values(weights).reduce((a,b)=>a+b,0)!==100)return alert("評価比率の合計を100%にしてください。");const grades={sp:num("cs2GradeSp"),s:num("cs2GradeS"),a:num("cs2GradeA"),b:num("cs2GradeB"),c:num("cs2GradeC")};if(!(grades.sp>=grades.s&&grades.s>=grades.a&&grades.a>=grades.b&&grades.b>=grades.c))return alert("評価境界は S+ ≥ S ≥ A ≥ B ≥ C の順にしてください。");const s={startDate:document.getElementById("cs2SetStart")?.value||"",weights,pickColors:{blueMax:num("cs2BlueMax"),redMin:num("cs2RedMin")},banMatch:Object.fromEntries([1,2,3,4,5,6,7].map(n=>[n,num(`cs2BanW${n}`)])),grades};if(s.pickColors.blueMax>=s.pickColors.redMin)return alert("青上限は赤開始より小さくしてください。");localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));state.baseCache.clear();alert("構成シミュレーター設定を保存しました。")}function resetSettings(){localStorage.removeItem(SETTINGS_KEY);document.getElementById("cs2SettingsCard")?.remove();ensureAdmin()}
-function boot(){document.getElementById("compositionSimulatorStylesV1")?.remove();document.getElementById("compositionSimulatorV1")?.remove();document.getElementById("compositionSimulatorPanel")?.remove();document.getElementById("csModal")?.remove();const old=document.querySelector('[data-app="compositionSimulator"]');old?.remove();const tabs=document.getElementById("tabsScrim");tabs?.insertAdjacentHTML("beforeend",'<button class="pageTab" data-app="compositionSimulator" data-page="simulator" onclick="window.LootRouteApp?.leave?.();CompositionSimulator.show()">構成シミュレーター</button>');document.querySelector(".stage")?.insertAdjacentHTML("beforeend",`<div class="compositionSimulatorPanel" id="compositionSimulatorPanel"><div class="cs2Head"><div><h2>構成シミュレーター</h2><div class="cs2Sub">現在のSplitと管理設定期間から構成ランキングを算出</div></div><div class="cs2Split" id="cs2CurrentSplit"></div></div><section class="cs2Card"><h3>検索条件</h3><div class="cs2TopFilters"><label>MAP<select id="cs2Map" onchange="CompositionSimulator.query()"><option value="">全MAP</option><option>World's Edge</option><option>Storm Point</option><option>Olympus</option><option>E-District</option></select></label><label>最低使用回数<input id="cs2Min" type="number" inputmode="numeric" value="5" oninput="CompositionSimulator.query()"></label></div><div class="cs2PickerTitle">BAN <span id="cs2BanCount">0/10体</span></div><div class="cs2LegendGroups" id="cs2BanGrid"></div><div class="cs2PickerTitle">使用レジェンド <span id="cs2UseCount">0/3体</span></div><div class="cs2LegendGroups" id="cs2UseGrid"></div></section><section class="cs2Card"><div class="cs2Summary" id="cs2Summary"></div><div class="cs2TableWrap"><table class="cs2Table"><thead id="cs2TableHead"><tr><th>#</th><th>構成</th><th data-sort-key="avgKP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgKP')">Avg KP</th><th data-sort-key="avgPP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgPP')">Avg PP</th><th data-sort-key="avgTP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgTP')">Avg TP</th><th data-sort-key="score" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','score')">評価</th><th>Pick率</th><th data-sort-key="usageCount" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','usageCount')">使用回数</th></tr></thead><tbody id="cs2Rows"></tbody></table></div></section></div><div class="cs2Modal" id="cs2Modal"><div class="cs2ModalBox"><div class="cs2ModalHead"><h3 id="cs2ModalTitle"></h3><button class="cs2Close" onclick="CompositionSimulator.closeDetail()">×</button></div><div class="cs2Metrics" id="cs2Metrics"></div><h4 class="cs2SectionTitle">MAP別</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>MAP</th><th>使用回数</th><th>Avg TP</th><th>Avg KP</th><th>Avg PP</th><th>Avg Place</th></tr></thead><tbody id="cs2MapRows"></tbody></table></div><h4 class="cs2SectionTitle">使用試合一覧</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>Date</th><th>Split</th><th>MAP</th><th>Block</th><th>Match</th><th>Team</th><th>KP</th><th>PP</th><th>TP</th><th>Place</th><th>BAN</th></tr></thead><tbody id="cs2GameRows"></tbody></table></div></div></div>`);ApexCommonUI.tableSort.register("compositionRanking",{onChange:query});renderPickers();document.addEventListener("pointerdown",e=>{const b=e.target?.closest?.(".sideMenu [data-app]");if(b&&b.dataset.app!=="compositionSimulator")hide()},true);document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});document.getElementById("cs2Modal")?.addEventListener("click",e=>{if(e.target.id==="cs2Modal")closeDetail()});const oldRegistration=window.IntegratedApp?.registration;if(oldRegistration&&!oldRegistration.__cs2Wrapped){const wrapped=function(){hide();const r=oldRegistration.apply(this,arguments);setTimeout(ensureAdmin,0);return r};wrapped.__cs2Wrapped=true,window.IntegratedApp.registration=wrapped}setTimeout(ensureAdmin,500)}
+function boot(){document.getElementById("compositionSimulatorStylesV1")?.remove();document.getElementById("compositionSimulatorV1")?.remove();document.getElementById("compositionSimulatorPanel")?.remove();document.getElementById("csModal")?.remove();const old=document.querySelector('[data-app="compositionSimulator"]');old?.remove();const tabs=document.getElementById("tabsStrategy");tabs?.insertAdjacentHTML("afterbegin",'<button class="pageTab" data-app="compositionSimulator" data-page="simulator" onclick="window.LootRouteApp?.leave?.();CompositionSimulator.show()">構成シミュレーター</button>');document.querySelector(".stage")?.insertAdjacentHTML("beforeend",`<div class="compositionSimulatorPanel" id="compositionSimulatorPanel"><div class="cs2Head"><div><h2>構成シミュレーター</h2><div class="cs2Sub">現在のSplitと管理設定期間から構成ランキングを算出</div></div><div class="cs2Split" id="cs2CurrentSplit"></div></div><section class="cs2Card"><h3>検索条件</h3><div class="cs2TopFilters"><label>MAP<select id="cs2Map" onchange="CompositionSimulator.query()"><option value="">全MAP</option><option>World's Edge</option><option>Storm Point</option><option>Olympus</option><option>E-District</option></select></label><label>最低使用回数<input id="cs2Min" type="number" inputmode="numeric" value="5" oninput="CompositionSimulator.query()"></label></div><div class="cs2PickerTitle">BAN <span id="cs2BanCount">0/10体</span></div><div class="cs2LegendGroups" id="cs2BanGrid"></div><div class="cs2PickerTitle">使用レジェンド <span id="cs2UseCount">0/3体</span></div><div class="cs2LegendGroups" id="cs2UseGrid"></div></section><section class="cs2Card"><div class="cs2Summary" id="cs2Summary"></div><div class="cs2TableWrap"><table class="cs2Table"><thead id="cs2TableHead"><tr><th>#</th><th>構成</th><th data-sort-key="avgKP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgKP')">Avg KP</th><th data-sort-key="avgPP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgPP')">Avg PP</th><th data-sort-key="avgTP" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','avgTP')">Avg TP</th><th data-sort-key="score" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','score')">評価</th><th>Pick率</th><th data-sort-key="usageCount" onclick="ApexCommonUI.tableSort.cycle('compositionRanking','usageCount')">使用回数</th></tr></thead><tbody id="cs2Rows"></tbody></table></div></section></div><div class="cs2Modal" id="cs2Modal"><div class="cs2ModalBox"><div class="cs2ModalHead"><h3 id="cs2ModalTitle"></h3><button class="cs2Close" onclick="CompositionSimulator.closeDetail()">×</button></div><div class="cs2Metrics" id="cs2Metrics"></div><h4 class="cs2SectionTitle">MAP別</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>MAP</th><th>使用回数</th><th>Avg TP</th><th>Avg KP</th><th>Avg PP</th><th>Avg Place</th></tr></thead><tbody id="cs2MapRows"></tbody></table></div><h4 class="cs2SectionTitle">使用試合一覧</h4><div class="cs2DetailScroll"><table class="cs2DetailTable"><thead><tr><th>Date</th><th>Split</th><th>MAP</th><th>Block</th><th>Match</th><th>Team</th><th>KP</th><th>PP</th><th>TP</th><th>Place</th><th>BAN</th></tr></thead><tbody id="cs2GameRows"></tbody></table></div></div></div>`);ApexCommonUI.tableSort.register("compositionRanking",{onChange:query});renderPickers();document.addEventListener("pointerdown",e=>{const b=e.target?.closest?.(".sideMenu [data-app]");if(b&&b.dataset.app!=="compositionSimulator")hide()},true);document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});document.getElementById("cs2Modal")?.addEventListener("click",e=>{if(e.target.id==="cs2Modal")closeDetail()});const oldRegistration=window.IntegratedApp?.registration;if(oldRegistration&&!oldRegistration.__cs2Wrapped){const wrapped=function(){hide();const r=oldRegistration.apply(this,arguments);setTimeout(ensureAdmin,0);return r};wrapped.__cs2Wrapped=true,window.IntegratedApp.registration=wrapped}setTimeout(ensureAdmin,500)}
 
 window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensureAdmin,renderImageAdmin,chooseImage,uploadImage,deleteImage,changeRole,moveLegend,saveSettings,resetSettings,reset,settings,baseBucket,groupProfilesByRole,getLegendImageUrl};window.addEventListener("apex:legend-media-change",()=>{renderImageAdmin();renderPickers();query()});window.addEventListener("apex:legend-image-ready",()=>{renderImageAdmin();renderPickers();if(document.getElementById("compositionSimulatorPanel")?.classList.contains("active"))query()});window.addEventListener("beforeunload",()=>LegendImageAssets.revokeAll(),{once:true});window.addEventListener("apex:indexeddb-scrims-saved",()=>{state.baseCache.clear();window.compositionAnalysisData=null;if(document.getElementById("compositionSimulatorPanel")?.classList.contains("active"))query()});document.readyState==="loading"?document.addEventListener("DOMContentLoaded",boot,{once:true}):boot()})();</script>
 <script id="home-indexeddb-direct-v342">
@@ -5798,14 +5786,41 @@ window.CompositionSimulator={show,hide,query,toggle,showDetail,closeDetail,ensur
 #cloudSyncResultToast .csr-grid{display:grid;grid-template-columns:1fr auto;gap:6px 14px;font-size:12px;line-height:1.45}
 #cloudSyncResultToast .csr-label{color:#aebddb}#cloudSyncResultToast .csr-value{font-weight:800;text-align:right;color:#fff}
 #cloudSyncResultToast .csr-close{position:absolute;top:8px;right:10px;border:0;background:transparent;color:#9fb0cd;font-size:18px;cursor:pointer;padding:2px 5px}
+#cloudSyncMiniBadge{position:fixed;right:18px;bottom:16px;z-index:2147482000;display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(72,96,134,.7);border-radius:999px;background:rgba(8,16,31,.88);box-shadow:0 6px 20px rgba(0,0,0,.25);backdrop-filter:blur(8px);color:#aebddb;font-size:11px;font-weight:800;pointer-events:none}
+#cloudSyncMiniBadge .csmb-dot{width:7px;height:7px;border-radius:50%;background:#57d39b;box-shadow:0 0 8px rgba(87,211,155,.65)}
+#cloudSyncMiniBadge.busy .csmb-dot{background:#f1b45d;box-shadow:0 0 8px rgba(241,180,93,.65)}
+#cloudSyncMiniBadge.error{color:#ffd7dc;border-color:rgba(196,75,91,.75)}#cloudSyncMiniBadge.error .csmb-dot{background:#e36a78;box-shadow:0 0 8px rgba(227,106,120,.65)}
+
 </style>
 <script id="cloud-sync-result-toast-v1">(()=>{"use strict";
 let timer=0,lastState="";
 function ensure(){let el=document.getElementById("cloudSyncResultToast");if(el)return el;el=document.createElement("div");el.id="cloudSyncResultToast";el.setAttribute("role","status");el.innerHTML='<button class="csr-close" type="button" aria-label="閉じる">×</button><div class="csr-title"></div><div class="csr-grid"></div>';el.querySelector(".csr-close").addEventListener("click",hide);document.body.appendChild(el);return el}
+function ensureBadge(){let el=document.getElementById("cloudSyncMiniBadge");if(el)return el;el=document.createElement("div");el.id="cloudSyncMiniBadge";el.setAttribute("role","status");el.innerHTML='<span class="csmb-dot"></span><span class="csmb-text">同期確認中</span>';document.body.appendChild(el);return el}
+function setBadge(text,state="ok"){const el=ensureBadge();el.className=state;el.querySelector(".csmb-text").textContent=text}
 function hide(){const el=document.getElementById("cloudSyncResultToast");if(el)el.classList.remove("show");clearTimeout(timer)}
 function show(title,rows,error=false,ms=6500){const el=ensure();el.classList.toggle("error",!!error);el.querySelector(".csr-title").textContent=title;el.querySelector(".csr-grid").innerHTML=rows.map(([a,b])=>`<div class="csr-label">${a}</div><div class="csr-value">${b}</div>`).join("");requestAnimationFrame(()=>el.classList.add("show"));clearTimeout(timer);timer=setTimeout(hide,ms)}
-window.addEventListener("apex:cloud-push-complete",e=>{const d=e.detail||{},img=d.imageDelta||{},scr=d.scrims||{},delta=Number.isFinite(Number(scr.changed))?`${scr.changed}セット送信 / ${scr.unchanged??0}セット省略`: `${scr.count??0}セット / ${scr.matchCount??0}試合`;const rows=[["スクリム差分",delta],["全スクリム",`${scr.count??0}セット / ${scr.matchCount??0}試合`],["レジェンド画像",img.legendImages?"更新":"変更なし（送信省略）"],["漁りルート画像",img.lootRouteImages?"更新":"変更なし（送信省略）"],["更新時間",`${((d.durationMs||0)/1000).toFixed(2)}秒`]];if((scr.deleted||0)>0)rows.splice(2,0,["クラウド一覧除外",`${scr.deleted}セット`]);show("クラウド更新完了",rows)});
-window.addEventListener("apex:cloud-state",e=>{const d=e.detail||{};if(d.state==="error"&&lastState!=="error")show("クラウド更新エラー",[["内容",d.error||"更新を完了できませんでした"]],true,9000);lastState=d.state||""});
+window.addEventListener("apex:cloud-push-complete",e=>{const d=e.detail||{},img=d.imageDelta||{},scr=d.scrims||{},changed=Number(scr.changed)||0,deleted=Number(scr.deleted)||0,imageChanged=!!(img.legendImages||img.lootRouteImages),hasChanges=changed>0||deleted>0||imageChanged;setBadge("同期済み","ok");if(!hasChanges)return;const rows=[];if(changed>0)rows.push(["スクリム",`${changed}セット更新`]);if(deleted>0)rows.push(["クラウド一覧除外",`${deleted}セット`]);if(img.legendImages)rows.push(["レジェンド画像","更新"]);if(img.lootRouteImages)rows.push(["漁りルート画像","更新"]);rows.push(["更新時間",`${((d.durationMs||0)/1000).toFixed(2)}秒`]);show("クラウド同期完了",rows,false,3200)});
+window.addEventListener("apex:cloud-state",e=>{const d=e.detail||{};if(d.state==="error"){setBadge("同期エラー","error");if(lastState!=="error")show("クラウド更新エラー",[["内容",d.error||"更新を完了できませんでした"]],true,9000)}else if(d.state==="loading"||d.state==="syncing")setBadge("同期中","busy");else if(d.state==="ready"||d.state==="success")setBadge("同期済み","ok");lastState=d.state||""});
+})();</script>
+<style id="purpose-sidebar-v355-style">
+.sideMenu{gap:0!important;padding-top:10px!important}
+.sideMenu .menuBlock{margin:0 8px;padding:11px 0 10px;border:0;border-top:1px solid rgba(91,111,147,.24);background:transparent!important;box-shadow:none!important;border-radius:0!important}
+.sideMenu .menuBlock:first-child{border-top:0;padding-top:2px}
+.sideMenu .menuLabel{display:flex;align-items:center;gap:7px;margin:0 8px 7px;color:#8fa1c2;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:none}
+.sideMenu .menuLabelIcon{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;color:#f1a15f;font-size:12px}
+.sideMenu .pageTabs{display:flex;flex-direction:column;gap:3px}
+.sideMenu .pageTab{border-radius:8px!important;text-align:left!important;padding-left:14px!important}
+.sideMenu .homeMenuBlock .pageTab{font-weight:900}
+.sideMenu .sidebarSubLabel{display:block;margin:8px 12px 2px;color:#667899;font-size:9px;font-weight:900;letter-spacing:.12em}
+.sideMenu .sidebarSubLabel:first-child{margin-top:1px}
+.sideMenu .sidebarSubLabel.v355-empty{display:none}
+</style>
+<script id="purpose-sidebar-v355-script">(()=>{"use strict";
+function updateSubLabels(){document.querySelectorAll(".sideMenu .sidebarSubLabel").forEach(label=>{let n=label.nextElementSibling,visible=false;while(n&&!n.classList.contains("sidebarSubLabel")){if((n.matches?.(".pageTab,.appBtn"))&&getComputedStyle(n).display!=="none"){visible=true;break}n=n.nextElementSibling}label.classList.toggle("v355-empty",!visible)})}
+function apply(){updateSubLabels();document.querySelectorAll(".sideMenu .menuBlock").forEach(block=>{const any=[...block.querySelectorAll(".pageTab,.appBtn")].some(b=>getComputedStyle(b).display!=="none");block.style.display=any?"":"none"})}
+const observer=new MutationObserver(()=>requestAnimationFrame(apply));
+function boot(){apply();observer.observe(document.querySelector(".sideMenu")||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["class","style"]});window.addEventListener("apex:page-permissions-changed",apply);window.addEventListener("apex:auth-ready",()=>setTimeout(apply,30));setTimeout(apply,700)}
+window.ApexSidebarV355={apply};document.readyState==="loading"?document.addEventListener("DOMContentLoaded",boot,{once:true}):boot();
 })();</script>
 <style id="page-permissions-v354-style">
 body.role-readonly:not(.v354-page-viewonly) .adminPanel.active input:not([type="button"]):not([type="submit"]),body.role-readonly:not(.v354-page-viewonly) .adminPanel.active select,body.role-readonly:not(.v354-page-viewonly) .adminPanel.active textarea{pointer-events:auto!important;opacity:1!important}
@@ -5833,11 +5848,12 @@ const FIXED_ADMIN=new Set(["admin:userRoleAdmin","admin:systemManagement","admin
 const ADMIN_ONLY=new Set(FIXED_ADMIN);
 const PAGES=[
  {group:"基本",key:"home:home",label:"ホーム"},
- {group:"分析・閲覧",key:"scrim:analysisPage",label:"メタ分析"},{group:"分析・閲覧",key:"scrim:teamDetailPage",label:"チーム分析"},{group:"分析・閲覧",key:"scrim:dashboardPage",label:"ランキング"},{group:"分析・閲覧",key:"tracker:analysis",label:"ファイト分析"},{group:"分析・閲覧",key:"zone:overview",label:"最終安置一覧"},{group:"分析・閲覧",key:"ringConsole:overview",label:"リングコンソール確率"},{group:"分析・閲覧",key:"lootRoute:viewer",label:"漁りルート"},{group:"分析・閲覧",key:"compositionSimulator:simulator",label:"構成シミュレーター"},
- {group:"登録",key:"admin:registration",label:"データ登録"},{group:"登録",key:"admin:lootRouteAdmin",label:"漁りルート登録"},{group:"登録",key:"admin:fightRecord",label:"ファイト登録"},{group:"登録",key:"admin:scrimRegister",label:"スクリム登録"},{group:"登録",key:"admin:zoneRegister",label:"最終安置登録"},{group:"登録",key:"admin:ringConsoleAdmin",label:"リングコンソール登録"},
- {group:"管理者",key:"admin:userRoleAdmin",label:"権限管理"},{group:"管理者",key:"admin:systemManagement",label:"システム管理"},{group:"管理者",key:"admin:systemDiagnostics",label:"システム診断"}
+ {group:"分析",key:"scrim:dashboardPage",label:"ランキング"},{group:"分析",key:"scrim:analysisPage",label:"メタ分析"},{group:"分析",key:"scrim:teamDetailPage",label:"チーム分析"},{group:"分析",key:"tracker:analysis",label:"ファイト分析"},
+ {group:"戦略",key:"compositionSimulator:simulator",label:"構成シミュレーター"},{group:"戦略",key:"zone:overview",label:"最終安置"},{group:"戦略",key:"ringConsole:overview",label:"リングコンソール"},{group:"戦略",key:"lootRoute:viewer",label:"漁りルート"},
+ {group:"登録",key:"admin:scrimRegister",label:"スクリム登録"},{group:"登録",key:"admin:fightRecord",label:"ファイト登録"},{group:"登録",key:"admin:zoneRegister",label:"最終安置登録"},{group:"登録",key:"admin:ringConsoleAdmin",label:"リングコンソール登録"},{group:"登録",key:"admin:lootRouteAdmin",label:"漁りルート登録"},{group:"登録",key:"admin:registration",label:"データ登録"},
+ {group:"管理",key:"admin:userRoleAdmin",label:"権限管理"},{group:"管理",key:"admin:systemManagement",label:"システム管理"},{group:"管理",key:"admin:systemDiagnostics",label:"システム診断"}
 ];
-const DEFAULTS=(()=>{const out={player:{},coach:{},admin:{}};for(const p of PAGES){const reg=p.group==="登録",management=p.group==="管理者";out.player[p.key]=reg||management?"hidden":"view";out.coach[p.key]=management||p.key==="admin:registration"?"hidden":reg?"edit":"view";out.admin[p.key]="edit"}return out})();
+const DEFAULTS=(()=>{const out={player:{},coach:{},admin:{}};for(const p of PAGES){const reg=p.group==="登録",management=p.group==="管理";out.player[p.key]=reg||management?"hidden":"view";out.coach[p.key]=management||p.key==="admin:registration"?"hidden":reg?"edit":"view";out.admin[p.key]="edit"}return out})();
 const clone=x=>JSON.parse(JSON.stringify(x));
 const role=()=>{try{return window.AppRolesV196?.role?.()||JSON.parse(localStorage.getItem("apexSecureLoginUserV290")||"null")?.role||localStorage.getItem("apexCurrentRoleV174")||"player"}catch(_){return"player"}};
 function normalize(raw){const out=clone(DEFAULTS);for(const r of ROLES)for(const p of PAGES){const v=raw?.[r]?.[p.key];if(MODES[v])out[r][p.key]=v}for(const key of FIXED_ADMIN){out.admin[key]="edit";out.player[key]="hidden";out.coach[key]="hidden"}return out}
