@@ -3682,9 +3682,11 @@ window.ApexRuntimeV280={
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();
 })();
 </script>
-<script id="cloud-manager-v344-image-delta">(()=>{"use strict";
+<script id="cloud-manager-v345-scrim-image-delta">(()=>{"use strict";
 const TABLE="apex_nexus_cloud_data",CFG=Object.freeze({url:"https://mmlkgwucvcpmtziwikfk.supabase.co",key:"sb_publishable_TbI-2bq4JtO6zwh8Uc-NSw_qUKcFZdC",workspace:"apex-team-01"});
 const ASSET_ROWS=Object.freeze({legendImages:`${CFG.workspace}::legend-images-v1`,lootRouteImages:`${CFG.workspace}::loot-route-images-v1`});
+const SCRIM_ROW_PREFIX=`${CFG.workspace}::scrim-set-v1::`;
+function scrimWorkspace(id){return SCRIM_ROW_PREFIX+hashValue(String(id))+"-"+String(String(id).length)}
 let client,loader,busy=false,state="idle",lastError="";
 let pageClientId="",pageLastPushedRevision="";
 const $=id=>document.getElementById(id),now=()=>new Date().toISOString();
@@ -3715,9 +3717,10 @@ async function collect(syncMeta=null,imageManifests=null){
   await window.ApexScrimDB?.ready?.();
   const sets=Array.isArray(await window.ApexScrimDB?.getSets?.())?await window.ApexScrimDB.getSets():[];
   const normalized=sets.map(normalizeScrim);
-  const scrimBlock={database:"ApexOracleDB",store:"scrims",schemaVersion:1,count:normalized.length,matchCount:normalized.reduce((n,r)=>n+(Array.isArray(r.matches)?r.matches.length:0),0),contentHash:hashValue(normalized),sets:normalized};
+  const scrimKeys=normalized.map(record=>({id:record.id,updatedAt:record.updatedAt||record.createdAt||"",matchCount:Array.isArray(record.matches)?record.matches.length:0,digest:hashValue(record)})).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+  const scrimBlock={database:"ApexOracleDB",store:"scrims",schemaVersion:2,count:normalized.length,matchCount:scrimKeys.reduce((n,r)=>n+r.matchCount,0),contentHash:hashValue(scrimKeys),keys:scrimKeys};
   if(!imageManifests){const[legendScan,lootScan]=await Promise.all([scanLegendImages(),scanLootImages()]);imageManifests={legendImages:legendScan.manifest,lootRouteImages:lootScan.manifest}}
-  return{app:"APEX ORACLE",version:"cloud-v344-image-delta",updatedAt:now(),syncMeta:syncMeta||createSyncMeta(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages:imageManifests.legendImages,lootRouteImages:imageManifests.lootRouteImages}};
+  return{app:"APEX ORACLE",version:"cloud-v345-scrim-image-delta",updatedAt:now(),syncMeta:syncMeta||createSyncMeta(),integrity:window.ApexDataCore.buildIntegrity(storage),localStorage:storage,indexedDB:{scrims:scrimBlock,legendImages:imageManifests.legendImages,lootRouteImages:imageManifests.lootRouteImages}};
 }
 function validatePayload(payload){
   if(!payload||typeof payload!=="object")throw new Error("クラウドデータ本体が不正です");
@@ -3726,7 +3729,7 @@ function validatePayload(payload){
   const accepted={};
   for(const [k,v] of Object.entries(storage)){if(!String(k).startsWith("apex")||excluded(k))continue;accepted[k]=v}
   const remoteSets=payload?.indexedDB?.scrims?.sets,legendItems=payload?.indexedDB?.legendImages?.items,lootItems=payload?.indexedDB?.lootRouteImages?.items;
-  if(!Object.keys(accepted).length&&!Array.isArray(remoteSets)&&!Array.isArray(legendItems)&&!Array.isArray(lootItems))throw new Error("クラウドに復元可能なAPEXデータがありません");
+  if(!Object.keys(accepted).length&&!Array.isArray(remoteSets)&&!Array.isArray(legendItems)&&!Array.isArray(lootItems)&&!Array.isArray(payload?.indexedDB?.scrims?.keys)&&!Array.isArray(payload?.indexedDB?.legendImages?.keys)&&!Array.isArray(payload?.indexedDB?.lootRouteImages?.keys))throw new Error("クラウドに復元可能なAPEXデータがありません");
   if(payload.integrity&&Object.keys(accepted).length)window.ApexDataCore.verifyIntegrity(accepted,payload.integrity);
   if(remoteSets!==undefined&&!Array.isArray(remoteSets))throw new Error("クラウドのIndexedDBスクリム形式が不正です");
   if(Array.isArray(remoteSets)){
@@ -3737,8 +3740,9 @@ function validatePayload(payload){
   }
   function validateImages(items,block,label){if(items===undefined)return null;if(!Array.isArray(items))throw new Error(`${label}の形式が不正です`);const ids=new Set();for(const [index,item] of items.entries()){if(!item||typeof item!=="object"||!item.key||typeof item.dataUrl!=="string"||!item.dataUrl.startsWith("data:image/"))throw new Error(`${label} ${index+1}件目が不正です`);if(ids.has(item.key))throw new Error(`${label}のキーが重複しています: ${item.key}`);ids.add(item.key)}if(block?.schemaVersion<2&&block?.contentHash&&block.contentHash!==hashValue(items))throw new Error(`${label}の整合性確認に失敗しました`);return items}
   function validateManifest(block,label){if(!block||typeof block!=="object")return null;if(block.keys===undefined)return null;if(!Array.isArray(block.keys))throw new Error(`${label}マニフェストの形式が不正です`);const ids=new Set();for(const[index,item]of block.keys.entries()){if(!item||typeof item!=="object"||!item.key)throw new Error(`${label}マニフェスト ${index+1}件目が不正です`);if(ids.has(String(item.key)))throw new Error(`${label}マニフェストのキーが重複しています: ${item.key}`);ids.add(String(item.key))}if(block.contentHash&&block.contentHash!==hashValue(block.keys))throw new Error(`${label}マニフェストの整合性確認に失敗しました`);return block}
-  const legendBlock=payload?.indexedDB?.legendImages,lootBlock=payload?.indexedDB?.lootRouteImages;
-  return{localStorage:accepted,scrims:Array.isArray(remoteSets)?remoteSets.map(normalizeScrim):null,legendImages:validateImages(legendItems,legendBlock,"レジェンド画像"),lootRouteImages:validateImages(lootItems,lootBlock,"漁りルート画像"),legendManifest:validateManifest(legendBlock,"レジェンド画像"),lootManifest:validateManifest(lootBlock,"漁りルート画像")};
+  function validateScrimManifest(block){if(!block||typeof block!=="object"||block.keys===undefined)return null;if(!Array.isArray(block.keys))throw new Error("クラウドスクリムマニフェストの形式が不正です");const ids=new Set();for(const[index,item]of block.keys.entries()){if(!item||typeof item!=="object"||!item.id||!item.digest)throw new Error(`クラウドスクリムマニフェスト ${index+1}件目が不正です`);if(ids.has(String(item.id)))throw new Error(`クラウドスクリムマニフェストIDが重複しています: ${item.id}`);ids.add(String(item.id))}if(block.contentHash&&block.contentHash!==hashValue(block.keys))throw new Error("クラウドスクリムマニフェストの整合性確認に失敗しました");return block}
+  const scrimBlock=payload?.indexedDB?.scrims,legendBlock=payload?.indexedDB?.legendImages,lootBlock=payload?.indexedDB?.lootRouteImages;
+  return{localStorage:accepted,scrims:Array.isArray(remoteSets)?remoteSets.map(normalizeScrim):null,scrimManifest:validateScrimManifest(scrimBlock),legendImages:validateImages(legendItems,legendBlock,"レジェンド画像"),lootRouteImages:validateImages(lootItems,lootBlock,"漁りルート画像"),legendManifest:validateManifest(legendBlock,"レジェンド画像"),lootManifest:validateManifest(lootBlock,"漁りルート画像")};
 }
 function writeMeta(key,value,reason){try{return window.ApexDataCore?.write?.(key,value,{backup:false,reason})??(localStorage.setItem(key,String(value)),true)}catch(e){console.warn(e);return false}}
 function setState(s,msg,e=""){state=s;lastError=e||"";const a=$("cloudStatus"),b=$("v321SyncStatus");if(a)a.textContent=msg;if(b)b.textContent=msg;window.dispatchEvent(new CustomEvent("apex:cloud-state",{detail:getState()}))}
@@ -3749,6 +3753,10 @@ async function writeWorkspace(workspace,data,kind="main"){const c=await sb(),t=n
 async function writeRemote(data){return writeWorkspace(CFG.workspace,data,"main")}
 async function writeAssetRemote(type,block,syncMeta){const workspace=ASSET_ROWS[type];if(!workspace)throw new Error(`画像保存先が未定義です: ${type}`);return writeWorkspace(workspace,{app:"APEX ORACLE",version:"image-assets-v1",assetType:type,updatedAt:now(),syncMeta,block},type)}
 async function fetchAssetRemote(type){const workspace=ASSET_ROWS[type];if(!workspace)return null;return fetchWorkspace(workspace)}
+async function writeScrimRemote(record,syncMeta){const normalized=normalizeScrim(record),workspace=scrimWorkspace(normalized.id);return writeWorkspace(workspace,{app:"APEX ORACLE",version:"scrim-set-v1",updatedAt:now(),syncMeta,record:normalized},"scrim-set")}
+async function fetchScrimRemote(id){const result=await fetchWorkspace(scrimWorkspace(id));const record=result?.data?.record;if(!record)return null;const normalized=normalizeScrim(record);if(normalized.id!==String(id))throw new Error(`クラウドスクリム行のIDが一致しません: ${id}`);return normalized}
+function manifestFromLegacySets(sets){const normalized=(Array.isArray(sets)?sets:[]).map(normalizeScrim);return{keys:normalized.map(record=>({id:record.id,updatedAt:record.updatedAt||record.createdAt||"",matchCount:Array.isArray(record.matches)?record.matches.length:0,digest:hashValue(record)})).sort((a,b)=>String(a.id).localeCompare(String(b.id)))} }
+async function loadDeltaScrimSets(manifest,legacySets){if(Array.isArray(legacySets))return{sets:legacySets,fetched:legacySets.length,skipped:0,legacy:true};if(!manifest?.keys)return{sets:null,fetched:0,skipped:0};await window.ApexScrimDB?.ready?.();const local=await window.ApexScrimDB.getSets(),localMap=new Map((local||[]).map((r,i)=>{const n=normalizeScrim(r,i);return[n.id,hashValue(n)]}));const needed=manifest.keys.filter(item=>localMap.get(String(item.id))!==String(item.digest));if(!needed.length)return{sets:[],fetched:0,skipped:manifest.keys.length};const sets=[];for(const item of needed){const record=await fetchScrimRemote(item.id);if(!record)throw new Error(`クラウドスクリム本体を取得できません: ${item.id}`);if(hashValue(record)!==String(item.digest))throw new Error(`クラウドスクリム本体の整合性確認に失敗しました: ${item.id}`);sets.push(record)}return{sets,fetched:sets.length,skipped:manifest.keys.length-sets.length}}
 function role(){try{return String(JSON.parse(localStorage.getItem("apexSecureLoginUserV290")||"null")?.role||"").toLowerCase()}catch(_){return""}}
 async function push(){
   if(busy)return false;
@@ -3756,14 +3764,18 @@ async function push(){
   if(!["admin","管理者"].includes(role()))return setState("error","クラウド更新は管理者のみ実行できます。","管理者権限が必要です"),false;
   busy=true;
   try{
-    setState("syncing","画像差分を確認してクラウド更新中…");
+    setState("syncing","スクリム・画像差分を確認してクラウド更新中…");
     const syncMeta=createSyncMeta();
     const [legendScan,lootScan,remoteMain]=await Promise.all([scanLegendImages(),scanLootImages(),fetchRemote().catch(()=>null)]);
-    const remoteLegend=remoteMain?.data?.indexedDB?.legendImages,remoteLoot=remoteMain?.data?.indexedDB?.lootRouteImages;
+    const remoteLegend=remoteMain?.data?.indexedDB?.legendImages,remoteLoot=remoteMain?.data?.indexedDB?.lootRouteImages,remoteScrim=remoteMain?.data?.indexedDB?.scrims;
     const legendChanged=!remoteLegend||remoteLegend.contentHash!==legendScan.manifest.contentHash||Array.isArray(remoteLegend.items);
     const lootChanged=!remoteLoot||remoteLoot.contentHash!==lootScan.manifest.contentHash||Array.isArray(remoteLoot.items);
     const payload=await collect(syncMeta,{legendImages:legendScan.manifest,lootRouteImages:lootScan.manifest});
+    const localSets=await window.ApexScrimDB.getSets(),remoteManifest=remoteScrim?.keys?remoteScrim:manifestFromLegacySets(remoteScrim?.sets),remoteDigests=new Map((remoteManifest?.keys||[]).map(item=>[String(item.id),String(item.digest)]));
+    const changedScrims=localSets.map(normalizeScrim).filter(record=>remoteDigests.get(record.id)!==hashValue(record));
+    const deletedScrims=(remoteManifest?.keys||[]).filter(item=>!payload.indexedDB.scrims.keys.some(local=>String(local.id)===String(item.id))).length;
     window.ApexDataCore?.safeBackup?.("before-cloud-push");
+    for(const record of changedScrims)await writeScrimRemote(record,syncMeta);
     if(legendChanged)await writeAssetRemote("legendImages",await materializeImageBlock(legendScan),syncMeta);
     if(lootChanged)await writeAssetRemote("lootRouteImages",await materializeImageBlock(lootScan),syncMeta);
     const t=await writeRemote(payload);
@@ -3774,9 +3786,9 @@ async function push(){
     writeMeta("apexCloudLastLootHash",lootScan.manifest.contentHash||"","cloud-push-loot-hash");
     writeMeta("apexCloudLastRevision",syncMeta.revision,"cloud-push-revision");
     pageLastPushedRevision=syncMeta.revision;
-    window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t,durationMs:Math.round(performance.now()-pushStartedAt),scrims:{count:payload.indexedDB.scrims.count,matchCount:payload.indexedDB.scrims.matchCount},imageDelta:{legendImages:legendChanged,lootRouteImages:lootChanged}}}));
+    window.dispatchEvent(new CustomEvent("apex:cloud-push-complete",{detail:{...syncMeta,updatedAt:t,durationMs:Math.round(performance.now()-pushStartedAt),scrims:{count:payload.indexedDB.scrims.count,matchCount:payload.indexedDB.scrims.matchCount,changed:changedScrims.length,unchanged:payload.indexedDB.scrims.count-changedScrims.length,deleted:deletedScrims},imageDelta:{legendImages:legendChanged,lootRouteImages:lootChanged}}}));
     const imageState=`画像送信：レジェンド ${legendChanged?"更新":"省略"}・漁りルート ${lootChanged?"更新":"省略"}`;
-    setState("ready",`クラウド更新完了（スクリム ${payload.indexedDB.scrims.count}セット / ${payload.indexedDB.scrims.matchCount}試合・${imageState}）`);
+    setState("ready",`クラウド更新完了（スクリム差分 ${changedScrims.length} / 全${payload.indexedDB.scrims.count}セット・${imageState}）`);
     return true;
   }catch(e){setState("error","クラウド更新失敗: "+(e.message||e),e.message||String(e));return false}finally{busy=false}
 }
@@ -3810,7 +3822,8 @@ async function applyRemote(r,{automatic=false,allowDecrease=false}={}){
   for(const key of optionalLocalKeys){if(!(key in storage)){const localValue=window.ApexDataCore?.readJSON?.(key,[]);storage[key]=Array.isArray(localValue)?localValue:[]}}
   if(Object.keys(storage).length)window.ApexDataCore.replaceStorage(storage,{requireCritical:true,allowDecrease,integrity:null,source:automatic?"cloud-login-pull":"cloud-manual-pull"});
   for(const [key,value] of Object.entries(localUiState))localStorage.setItem(key,value);
-  const merged=await mergeRemoteScrims(validated.scrims,{automatic});
+  const scrimSource=await loadDeltaScrimSets(validated.scrimManifest,validated.scrims);
+  const merged=await mergeRemoteScrims(scrimSource.sets,{automatic});merged.fetched=scrimSource.fetched;merged.skipped=scrimSource.skipped;merged.legacy=!!scrimSource.legacy;
   const [legendSource,lootSource]=await Promise.all([loadDeltaImageItems("legendImages",validated.legendManifest,validated.legendImages),loadDeltaImageItems("lootRouteImages",validated.lootManifest,validated.lootRouteImages)]);
   const [legendMerged,lootMerged]=await Promise.all([mergeLegendImages(legendSource.items),mergeLootImages(lootSource.items)]);
   legendMerged.fetched=legendSource.fetched;legendMerged.skipped=legendSource.skipped;lootMerged.fetched=lootSource.fetched;lootMerged.skipped=lootSource.skipped;
@@ -3818,7 +3831,7 @@ async function applyRemote(r,{automatic=false,allowDecrease=false}={}){
   if(payload?.syncMeta?.revision)writeMeta("apexCloudLastRevision",payload.syncMeta.revision,"cloud-pull-revision");
   writeMeta("apexCloudLastLocalHash",payload.integrity?.overallHash||"","cloud-pull-hash");
   if(payload.indexedDB?.scrims?.contentHash)writeMeta("apexCloudLastScrimHash",payload.indexedDB.scrims.contentHash,"cloud-pull-scrim-hash");
-  const detail=merged.supported?`スクリム追加 ${merged.added}・更新 ${merged.updated}・ローカル優先 ${merged.keptLocal}・一致 ${merged.unchanged}`:"旧クラウド形式（IndexedDBなし）";
+  const detail=merged.supported?`スクリム取得 ${merged.fetched??merged.remote}・省略 ${merged.skipped||0}・追加 ${merged.added}・更新 ${merged.updated}・ローカル優先 ${merged.keptLocal}・一致 ${merged.unchanged}`:"旧クラウド形式（IndexedDBなし）";
   const imageDetail=`画像追加：レジェンド ${legendMerged.added||0}件${legendMerged.skipped?"（本体取得省略）":""}・漁りルート ${lootMerged.added||0}件${lootMerged.skipped?"（本体取得省略）":""}（既存画像は維持）`;
   setState("ready","クラウド最新版を取得しました。"+detail+" / "+imageDetail);
   window.dispatchEvent(new CustomEvent("apex:local-data-changed",{detail:{source:automatic?"cloud-login-pull":"cloud-manual-pull",updatedAt:r.updated_at||"",scrims:merged,legendImages:legendMerged,lootRouteImages:lootMerged}}));
@@ -4075,9 +4088,7 @@ window.ApexDataFoundationV336=Object.freeze({readMany,update,healthCheck,selfTes
 setTimeout(()=>{const health=healthCheck();CORE()?.audit?.("phase1-health-check",{ok:health.ok,problems:health.results.filter(r=>!r.ok)});selfTest()},0);
 })();
 </script>
-<script id="phase1-render-coordinator-v336">
-(()=>{"use strict";let timer=0,pending=new Set();function flush(){timer=0;const keys=[...pending];pending.clear();try{window.HomeApp?.render?.()}catch(_){}try{window.ScrimSavedList?.render?.()}catch(_){}try{window.ZoneOverviewApp?.render?.()}catch(_){}try{window.RingConsoleCleanV164?.renderApp?.()}catch(_){}try{window.ApexRuntimeV280?.refresh?.()}catch(_){}window.dispatchEvent(new CustomEvent("apex:render-complete",{detail:{keys}}))}window.addEventListener("apex:data-changed",e=>{for(const k of e.detail?.keys||[])pending.add(k);clearTimeout(timer);timer=setTimeout(flush,24)});window.ApexRenderCoordinatorV336={flush};})();
-</script>
+
 <script id="phase2-scrim-poi-ranking-core-v340">(()=>{"use strict";
 const CORE=()=>window.ApexDataCore;
 const norm=v=>String(v??"").normalize("NFKC").trim().toLowerCase().replace(/[‐‑‒–—―−ーｰ]/g,"-").replace(/[’'`´]/g,"").replace(/[\s\u3000._・･/\\()（）\[\]【】{}「」『』:：;；,，、|｜-]+/g,"");
@@ -5858,7 +5869,7 @@ let timer=0,lastState="";
 function ensure(){let el=document.getElementById("cloudSyncResultToast");if(el)return el;el=document.createElement("div");el.id="cloudSyncResultToast";el.setAttribute("role","status");el.innerHTML='<button class="csr-close" type="button" aria-label="閉じる">×</button><div class="csr-title"></div><div class="csr-grid"></div>';el.querySelector(".csr-close").addEventListener("click",hide);document.body.appendChild(el);return el}
 function hide(){const el=document.getElementById("cloudSyncResultToast");if(el)el.classList.remove("show");clearTimeout(timer)}
 function show(title,rows,error=false,ms=6500){const el=ensure();el.classList.toggle("error",!!error);el.querySelector(".csr-title").textContent=title;el.querySelector(".csr-grid").innerHTML=rows.map(([a,b])=>`<div class="csr-label">${a}</div><div class="csr-value">${b}</div>`).join("");requestAnimationFrame(()=>el.classList.add("show"));clearTimeout(timer);timer=setTimeout(hide,ms)}
-window.addEventListener("apex:cloud-push-complete",e=>{const d=e.detail||{},img=d.imageDelta||{},scr=d.scrims||{};show("クラウド更新完了",[["スクリム",`${scr.count??0}セット / ${scr.matchCount??0}試合`],["レジェンド画像",img.legendImages?"更新":"変更なし（送信省略）"],["漁りルート画像",img.lootRouteImages?"更新":"変更なし（送信省略）"],["更新時間",`${((d.durationMs||0)/1000).toFixed(2)}秒`]])});
+window.addEventListener("apex:cloud-push-complete",e=>{const d=e.detail||{},img=d.imageDelta||{},scr=d.scrims||{},delta=Number.isFinite(Number(scr.changed))?`${scr.changed}セット送信 / ${scr.unchanged??0}セット省略`: `${scr.count??0}セット / ${scr.matchCount??0}試合`;const rows=[["スクリム差分",delta],["全スクリム",`${scr.count??0}セット / ${scr.matchCount??0}試合`],["レジェンド画像",img.legendImages?"更新":"変更なし（送信省略）"],["漁りルート画像",img.lootRouteImages?"更新":"変更なし（送信省略）"],["更新時間",`${((d.durationMs||0)/1000).toFixed(2)}秒`]];if((scr.deleted||0)>0)rows.splice(2,0,["クラウド一覧除外",`${scr.deleted}セット`]);show("クラウド更新完了",rows)});
 window.addEventListener("apex:cloud-state",e=>{const d=e.detail||{};if(d.state==="error"&&lastState!=="error")show("クラウド更新エラー",[["内容",d.error||"更新を完了できませんでした"]],true,9000);lastState=d.state||""});
 })();</script>
 </body>
