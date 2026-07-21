@@ -1468,15 +1468,21 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <div class="headerRightControls">
 <div class="globalSplitControl" id="globalSplitControl"><div><label>Split</label><select id="globalSplitSelect" onchange="IntegratedApp.changeGlobalSplit(this.value)"></select></div></div>
 <div class="headerCloudControl" id="headerCloudControl">
-<div class="headerCloudMeta"><span class="headerCloudLabel">Cloud</span><b id="headerCloudState">確認中</b><small id="headerCloudUpdated">最終更新：—</small></div>
-<button id="headerCloudPullBtn" onclick="HeaderCloudPublish.refresh()" type="button">最新データ取得</button>
-<button id="headerCloudPushBtn" onclick="HeaderCloudPublish.publish()" type="button">クラウド更新</button>
-<button id="headerStorageDiagBtn" onclick="ApexStorageDiagnostics.open()" type="button">容量診断</button>
+<div class="headerCloudMeta"><span class="headerCloudDot" aria-hidden="true"></span><b id="headerCloudState">確認中</b><small id="headerCloudUpdated">最終更新：—</small></div>
+<div class="headerMoreWrap" id="headerMoreWrap">
+<button aria-expanded="false" aria-haspopup="menu" aria-label="その他の操作" id="headerMoreBtn" type="button">•••</button>
+<div class="headerMoreMenu" id="headerMoreMenu" role="menu">
+<button id="headerCloudPullBtn" onclick="HeaderCloudPublish.refresh();HeaderCompactMenuV357.close()" role="menuitem" type="button">最新データ取得</button>
+<button id="headerCloudPushBtn" onclick="HeaderCloudPublish.publish();HeaderCompactMenuV357.close()" role="menuitem" type="button">クラウド更新</button>
+<button onclick="SystemManagementV293.open();HeaderCompactMenuV357.close()" role="menuitem" type="button">システム管理を開く</button>
+</div>
+</div>
 </div>
 </div>
 </header>
 <aside aria-label="アプリ・ページ切替メニュー" class="sideMenu">
 <div class="menuBlock homeMenuBlock" data-sidebar-group="home">
+<span class="menuLabel"><span class="menuLabelIcon">⌂</span>ホーム</span>
 <div class="pageTabs" id="tabsHome">
 <button class="pageTab active" data-app="home" data-page="home" onclick="window.LootRouteApp?.leave?.();HomeApp.show()">ホーム</button>
 </div>
@@ -1740,6 +1746,12 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
 <h3>クラウド同期</h3>
 <p>Supabaseへのアップロード・読み込み・接続設定を管理します。通常ユーザーによる手動同期は行いません。</p>
 <button class="actionBtn action-refresh" onclick="CloudSyncApp.open()" type="button">クラウド同期を管理</button>
+</section>
+<section class="v293SystemCard">
+<div class="v293SystemIcon">▥</div>
+<h3>保存容量診断</h3>
+<p>ブラウザ内の保存領域を計測し、スクリム・画像・各種設定が使用している容量を確認します。データの変更は行いません。</p>
+<button class="actionBtn action-refresh" onclick="ApexStorageDiagnostics.open()" type="button">容量を診断</button>
 </section>
 <section class="v293SystemCard v293InfoCard">
 <div class="v293SystemIcon">i</div>
@@ -2009,6 +2021,8 @@ button.action-utility{height:22px!important;min-height:22px!important;min-width:
  #teamPanel{display:grid;gap:2px}.teamRow{display:grid;grid-template-columns:22px minmax(84px,1.15fr) minmax(55px,.72fr) minmax(55px,.72fr) 24px 24px 24px 24px;gap:3px;min-height:21px;padding:2px 4px;border:1px solid rgba(255,255,255,.065);border-radius:7px;background:rgba(255,255,255,.025);font-size:9.8px;line-height:1.02;align-items:center;text-align:center}
  .teamHead{background:var(--head);color:#bfd0f3;font-size:9.4px;font-weight:900}.teamRow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.empty{padding:18px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;color:var(--muted);font-size:11px;text-align:center}
  </style></head><body><div class="wrap"><div class="sortbar"><div><div class="label">表示</div><div class="context" id="teamContext">登録済みスクリムを選択してください</div></div><label class="label">並び替え<select id="integratedTeamSort"><option value="rankAsc" selected>Place順</option><option value="num">番号順</option><option value="name">チーム名順</option><option value="tpDesc">TP高い順</option><option value="kpDesc">KP高い順</option><option value="ppDesc">PP高い順</option></select></label></div><div id="teamPanel"><div class="empty">登録済みスクリムを選択してください。</div></div></div>
+
+
 
 </body></html>`;
  if(!teamLoaded||!f.contentDocument?.getElementById("teamPanel")){
@@ -5878,6 +5892,172 @@ function ensureAdminTab(){const tabs=document.querySelector(".v290AdminTabs");if
 function boot(){const wait=()=>{ensureAdminTab();apply();patchFrames()};wait();setTimeout(wait,300);setTimeout(wait,900);document.querySelectorAll("iframe").forEach(f=>f.addEventListener("load",()=>setTimeout(()=>{patchFrame(f);applyCurrent()},30)));document.addEventListener("click",e=>{const b=e.target?.closest?.("[data-v290-tab]");if(b&&b.dataset.v290Tab!=="permissions")cleanupPermissionView()},true);document.addEventListener("click",guardNavigation,true);document.addEventListener("click",guardEditing,true);window.addEventListener("apex:auth-ready",()=>setTimeout(apply,20));window.addEventListener("apex:page-permissions-changed",apply);window.addEventListener("storage",e=>{if(e.key===STORAGE_KEY)apply()});const observer=new MutationObserver(()=>{ensureAdminTab();applySidebar()});observer.observe(document.body,{subtree:true,childList:true})}
 window.ApexPagePermissionsV354={read,write,mode,canView:key=>mode(key)!=="hidden",canEdit:key=>mode(key)==="edit",apply,renderAdmin,defaults:()=>clone(DEFAULTS),pages:()=>clone(PAGES)};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+})();</script>
+<style id="apex-ui-polish-v356-style">
+/* APEX ORACLE UI polish: visual-only header and scrollbar refresh */
+:root{
+  --scroll-track:rgba(5,10,22,.42);
+  --scroll-thumb:rgba(121,146,190,.34);
+  --scroll-thumb-hover:rgba(249,115,22,.72);
+}
+html,body,.sideMenu,.stage,.adminPanel,.homePanel,.scrimRegPane,.choiceList,.fightPendingList,.fightDoneCard .tableWrap,.polandStandings,.scrimSavedTableWrap,.detailBox,.v290TableWrap{
+  scrollbar-width:thin;
+  scrollbar-color:var(--scroll-thumb) var(--scroll-track);
+}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:999px}
+*::-webkit-scrollbar-thumb{
+  min-height:34px;
+  border:2px solid transparent;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(126,151,197,.58),rgba(67,87,128,.48)) padding-box;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+*::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg,rgba(251,146,60,.92),rgba(194,65,12,.82)) padding-box;
+}
+*::-webkit-scrollbar-corner{background:transparent}
+
+.header{
+  min-height:74px;
+  padding:11px 14px 11px 16px!important;
+  border-color:rgba(91,111,147,.42)!important;
+  border-radius:16px!important;
+  background:
+    radial-gradient(circle at 0 0,rgba(249,115,22,.20),transparent 32%),
+    linear-gradient(135deg,rgba(17,25,43,.97),rgba(10,16,30,.98) 62%,rgba(48,30,14,.72))!important;
+  box-shadow:0 16px 42px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.035)!important;
+  backdrop-filter:blur(16px);
+}
+.headerRightControls{
+  align-items:center!important;
+  gap:9px!important;
+  padding:5px!important;
+  border:1px solid rgba(76,96,132,.34);
+  border-radius:14px;
+  background:rgba(6,12,25,.48);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.globalSplitControl{
+  align-items:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  padding:0 3px 0 7px;
+}
+.globalSplitControl>div{display:grid;grid-template-columns:auto minmax(155px,190px);align-items:center;gap:8px}
+.globalSplitControl label{
+  margin:0!important;
+  color:#8fa5c9!important;
+  font-size:9px!important;
+  letter-spacing:.13em!important;
+}
+.globalSplitControl select{
+  width:190px!important;
+  height:36px!important;
+  border:1px solid rgba(87,110,153,.56)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,rgba(22,33,56,.96),rgba(12,20,37,.96))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 6px 16px rgba(0,0,0,.18);
+  transition:border-color .16s,box-shadow .16s,transform .16s;
+}
+.globalSplitControl select:hover{border-color:rgba(249,115,22,.55)!important}
+.globalSplitControl select:focus{border-color:#f97316!important;box-shadow:0 0 0 3px rgba(249,115,22,.13)!important}
+.loginStatusBtn{
+  height:36px!important;
+  border-radius:10px!important;
+  border:1px solid rgba(87,110,153,.5)!important;
+  background:linear-gradient(180deg,rgba(28,42,69,.95),rgba(16,25,44,.95))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 6px 16px rgba(0,0,0,.18)!important;
+}
+.headerCloudControl{
+  height:46px!important;
+  min-width:0!important;
+  gap:7px!important;
+  padding:4px!important;
+  border-color:rgba(58,91,132,.36)!important;
+  border-radius:11px!important;
+  background:linear-gradient(180deg,rgba(15,27,47,.84),rgba(9,17,31,.88))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+.headerCloudMeta{min-width:150px!important;padding:0 5px 0 2px}
+.headerCloudLabel{
+  width:32px!important;height:32px!important;border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(56,189,248,.18),rgba(14,116,144,.13))!important;
+  border:1px solid rgba(56,189,248,.18);
+  color:#bfeaff!important;
+  font-size:9px!important;
+  letter-spacing:.05em;
+}
+.headerCloudMeta b{font-size:11px!important;color:#f3f8ff!important}
+.headerCloudMeta small{font-size:9px!important;color:#7f93b4!important}
+#headerCloudPushBtn,#headerCloudPullBtn,#headerStorageDiagBtn{
+  height:36px!important;
+  padding:0 13px!important;
+  border-radius:10px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 7px 16px rgba(0,0,0,.2)!important;
+  transition:transform .15s,filter .15s,box-shadow .15s!important;
+}
+#headerCloudPushBtn:hover,#headerCloudPullBtn:hover,#headerStorageDiagBtn:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 10px 22px rgba(0,0,0,.26)!important;
+}
+#headerCloudPullBtn{background:linear-gradient(135deg,#2fb6e8,#075985)!important}
+#headerCloudPushBtn{background:linear-gradient(135deg,#fb7b1d,#b83b0a)!important}
+#headerStorageDiagBtn{background:linear-gradient(135deg,#20b760,#116a38)!important}
+@media(max-width:1250px){
+  .headerRightControls{flex-wrap:wrap;justify-content:flex-end}
+  .headerCloudMeta{min-width:135px!important}
+}
+@media(max-width:900px){
+  .headerRightControls{justify-content:center!important;padding:7px!important}
+  .globalSplitControl>div{grid-template-columns:1fr}
+  .globalSplitControl label{text-align:left}
+}
+</style>
+<script id="apex-scrollbar-polish-v356-script">(()=>{"use strict";
+const STYLE_ID="apex-inner-scrollbar-v356";
+const CSS=`:root{--sb-track:rgba(5,10,22,.42);--sb-thumb:rgba(121,146,190,.36)}html,body,*{scrollbar-width:thin;scrollbar-color:var(--sb-thumb) var(--sb-track)}*::-webkit-scrollbar{width:8px;height:8px}*::-webkit-scrollbar-track{background:var(--sb-track);border-radius:999px}*::-webkit-scrollbar-thumb{min-height:34px;border:2px solid transparent;border-radius:999px;background:linear-gradient(180deg,rgba(126,151,197,.58),rgba(67,87,128,.48)) padding-box;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}*::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(251,146,60,.92),rgba(194,65,12,.82)) padding-box}*::-webkit-scrollbar-corner{background:transparent}`;
+function patch(frame){try{const d=frame.contentDocument;if(!d||d.getElementById(STYLE_ID))return;const s=d.createElement("style");s.id=STYLE_ID;s.textContent=CSS;(d.head||d.documentElement).appendChild(s)}catch(_){}}
+function patchAll(){document.querySelectorAll("iframe").forEach(patch)}
+function boot(){patchAll();document.querySelectorAll("iframe").forEach(f=>f.addEventListener("load",()=>setTimeout(()=>patch(f),20)));const o=new MutationObserver(()=>requestAnimationFrame(patchAll));o.observe(document.body,{subtree:true,childList:true});setTimeout(patchAll,500);setTimeout(patchAll,1500)}
+document.readyState==="loading"?document.addEventListener("DOMContentLoaded",boot,{once:true}):boot();
+})();</script>
+<style id="apex-header-compact-v357-style">
+/* Compact daily-use header; behavior and data are unchanged. */
+.headerRightControls{padding:4px 5px!important;gap:8px!important}
+.headerCloudControl{height:44px!important;min-width:0!important;padding:4px 5px 4px 10px!important;gap:8px!important}
+.headerCloudMeta{grid-template-columns:9px auto!important;column-gap:7px!important;min-width:122px!important;flex:0 1 auto!important}
+.headerCloudDot{grid-row:1 / span 2;width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.58)}
+.headerCloudMeta b{font-size:11px!important;color:#dbeafe!important}
+.headerCloudMeta small{font-size:9px!important;color:#8497b8!important}
+.headerCloudControl.dirty .headerCloudDot{background:#f97316;box-shadow:0 0 10px rgba(249,115,22,.58)}
+.headerCloudControl.offline .headerCloudDot{background:#64748b;box-shadow:none}
+.headerCloudControl.error .headerCloudDot{background:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.55)}
+#headerCloudPullBtn{height:34px!important;padding:0 13px!important;border-radius:9px!important}
+.headerMoreWrap{position:relative;display:flex;align-items:center}
+#headerMoreBtn{width:34px;height:34px;padding:0;border:1px solid rgba(87,110,153,.44);border-radius:9px;background:linear-gradient(180deg,rgba(29,42,68,.92),rgba(15,24,42,.94));color:#cbd8ee;font-size:13px;font-weight:950;letter-spacing:1px;cursor:pointer}
+#headerMoreBtn:hover,#headerMoreBtn[aria-expanded="true"]{border-color:rgba(249,115,22,.58);color:#fff;background:rgba(249,115,22,.12)}
+.headerMoreMenu{position:absolute;right:0;top:42px;z-index:10030;display:none;width:190px;padding:6px;border:1px solid rgba(79,99,137,.58);border-radius:11px;background:linear-gradient(180deg,rgba(17,27,47,.98),rgba(8,15,29,.99));box-shadow:0 18px 46px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.04)}
+.headerMoreMenu.open{display:grid;gap:4px}
+.headerMoreMenu button{height:34px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#cbd8ee;text-align:left;font-size:11px;font-weight:900;cursor:pointer}
+.headerMoreMenu button:hover{background:rgba(249,115,22,.12);color:#fff}
+body:not(.v323-cloud-admin) #headerMoreWrap{display:none!important}
+@media(max-width:1050px){.headerCloudMeta{min-width:105px!important}.headerCloudMeta small{display:none}.headerCloudControl{height:42px!important}}
+/* Keep the compact action menu above the application stage. */
+.header{position:relative!important;z-index:12000!important;overflow:visible!important}
+.headerRightControls,.headerCloudControl,.headerMoreWrap{overflow:visible!important}
+.headerMoreMenu{top:calc(100% + 8px)!important;right:0!important;z-index:12050!important}
+.headerMoreMenu #headerCloudPullBtn,.headerMoreMenu #headerCloudPushBtn{width:100%!important;height:34px!important;padding:0 10px!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;color:#cbd8ee!important;text-align:left!important;transform:none!important}
+.headerMoreMenu #headerCloudPullBtn:hover,.headerMoreMenu #headerCloudPushBtn:hover{background:rgba(249,115,22,.12)!important;color:#fff!important;filter:none!important;transform:none!important;box-shadow:none!important}
+</style>
+<script id="apex-header-compact-v357-script">(()=>{"use strict";
+ const wrap=()=>document.getElementById("headerMoreWrap"),menu=()=>document.getElementById("headerMoreMenu"),btn=()=>document.getElementById("headerMoreBtn");
+ function close(){menu()?.classList.remove("open");btn()?.setAttribute("aria-expanded","false")}
+ function toggle(){const open=!menu()?.classList.contains("open");close();if(open){menu()?.classList.add("open");btn()?.setAttribute("aria-expanded","true")}}
+ function init(){btn()?.addEventListener("click",event=>{event.stopPropagation();toggle()});document.addEventListener("click",event=>{if(!wrap()?.contains(event.target))close()});document.addEventListener("keydown",event=>{if(event.key==="Escape")close()})}
+ window.HeaderCompactMenuV357={close,toggle};
+ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();</script>
 </body>
 </html>
